@@ -128,7 +128,7 @@ class AuthController extends Controller
 
     $otpData = FoodDeliveryPartnersLoginOtp::where('phone_number', $request->phone_number)->OrderBy('created_at', 'desc')->first();
 
-    if ($otpData->otp && $otpData->expires_at > time()) {
+    if ($otpData && $otpData->otp && $otpData->expires_at > time()) {
       return response()->json([
         'code' => 429,
         'success' => false,
