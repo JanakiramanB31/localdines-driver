@@ -29,6 +29,10 @@ $router->post('/verify-otp', 'AuthController@verifyOTP');
 /* Generating New Access Token for Valid Refresh Token Route */
 $router->post('/auth', 'AuthController@verifyRefreshToken');
 
+$router->post('/admin-approve', 'AdminController@approveUser');
+$router->post('/admin-reject', 'AdminController@rejectUser');
+
+
 $router->group(['middleware' => 'auth'], function () use ($router) {
   
   /* Dashboard Route */
