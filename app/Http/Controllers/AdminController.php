@@ -8,7 +8,7 @@ use App\Models\FoodDeliveryPartnersLoginOtp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-class AuthController extends Controller
+class AdminController extends Controller
 {
   /**
    * Create a new controller instance.
