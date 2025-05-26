@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FoodDeliveryPartner;
-use App\Models\FoodDeliveryPartnerTakenOrder;
+use App\Models\FoodDeliveryPartnersTakenOrder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -63,7 +63,7 @@ class DeliveryController extends Controller
       ->values();
     });
 
-    $ordersData = FoodDeliveryPartnerTakenOrder::with([
+    $ordersData = FoodDeliveryPartnersTakenOrder::with([
     'order' => function($query) {
       $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'price', 'price_packing', 'price_delivery', 'discount', 'subtotal', 'tax', 'total', 'customer_paid');
     },
@@ -107,7 +107,7 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnersTakenOrder::find($orderID);
      
     if(!$orderData) {
       return response()->json([
@@ -134,7 +134,7 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnersTakenOrder::find($orderID);
     
     if(!$orderData) {
       return response()->json([
@@ -166,7 +166,7 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnersTakenOrder::find($orderID);
     
     if(!$orderData) {
       return response()->json([
@@ -206,7 +206,7 @@ class DeliveryController extends Controller
   public function orderHistory(Request $request) {
     $userId = $request->auth->sub;
 
-    $ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->get();
+    $ordersData = FoodDeliveryPartnersTakenOrder::with('order')->where('user_id', $userId)->get();
      //return $getOrder;
 
     if(count($ordersData) == 0) {

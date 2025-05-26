@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class FoodDeliveryPartnerTakenOrder extends Model
+class FoodDeliveryPartnersTakenOrder extends Model
 {
 
   public function order() {
