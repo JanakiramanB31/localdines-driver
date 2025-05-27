@@ -50,7 +50,7 @@ class DeliveryController extends Controller
   }
 
   public function fetchAssignedOrder(Request $request) {
-    $userId = 33; //$request->auth->sub;
+    $userId = $request->auth->sub;
 
     $productData = Cache::remember('product_data', Carbon::now()->addDay(), function() {
       return DB::table('food_delivery_plugin_base_multi_lang')
@@ -84,7 +84,7 @@ class DeliveryController extends Controller
       });
     });
 
-    if(count($ordersData) == 0) {
+    if(count($orderData1) == 0) {
       return response()->json([
         'code' => 200,
         'success' => true,
@@ -96,7 +96,7 @@ class DeliveryController extends Controller
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $ordersData
+      'data' => $orderData1
     ], 200);
   }
 
