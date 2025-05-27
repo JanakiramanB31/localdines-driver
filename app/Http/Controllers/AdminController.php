@@ -1,8 +1,6 @@
 <?php
 
 namespace App\Http\Controllers;
-
-use App\Helpers\JwtAuthHelper;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnersLoginOtp;
 use Illuminate\Http\Request;
@@ -25,11 +23,11 @@ class AdminController extends Controller
       'user_id' => 'required',
     ]);
 
-    $deliveryPartner = FoodDeliveryPartner::where('id', $request->user_id)->first();
+    $deliveryPartner = FoodDeliveryPartner::find($request->user_id);
 
     if ($deliveryPartner) {
 
-      $deliveryPartner->admin_approval == "accepted";
+      $deliveryPartner->admin_approval = "accepted";
       $deliveryPartner->save();
 
       return response()->json([
@@ -56,7 +54,7 @@ class AdminController extends Controller
 
     if ($deliveryPartner) {
 
-      $deliveryPartner->admin_approval == "rejected";
+      $deliveryPartner->admin_approval = "rejected";
       $deliveryPartner->save();
 
       return response()->json([
