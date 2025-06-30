@@ -56,4 +56,21 @@ $router->group(['middleware' => 'auth'], function () use ($router) {
   /* Updating Duty Status */
   $router->post('/duty-status', 'DeliveryController@dutyStatusUpdate');
 
+  /* Update Kin Info */
+  //$router->post('/kin-info-update', 'ProfileController@updateKinInfo');
+
+  /* Update Bank Account Info */
+  $router->post('/bank-info-update', 'ProfileController@updateBankAccInfo');
+
+  /* pdation Additional Info */
+  $router->post('/update-profile-info', 'ProfileController@updateProfileInfo');
+
+});
+
+$router->get('/docs', function () {
+    return view('swagger');
+});
+
+$router->get('/api-docs.json', function () {
+    return response()->file(base_path('public/api-docs.json'));
 });

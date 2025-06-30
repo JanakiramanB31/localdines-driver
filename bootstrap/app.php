@@ -27,6 +27,9 @@ $app->withFacades();
 
 $app->withEloquent();
 
+// Register RoutingServiceProvider to fix ResponseFactory binding
+$app->register(Illuminate\Routing\RoutingServiceProvider::class);
+
 /*
 |--------------------------------------------------------------------------
 | Register Container Bindings

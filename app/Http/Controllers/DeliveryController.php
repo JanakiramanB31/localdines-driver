@@ -21,6 +21,32 @@ class DeliveryController extends Controller
     $this->middleware('auth');
   }
 
+  /**
+   * @OA\Post(
+   *     path="/duty-status",
+   *     summary="Update delivery person duty status",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"duty_status"},
+   *             @OA\Property(property="duty_status", type="string", enum={"on", "off"})
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Duty status updated successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Duty Status Updated Successful")
+   *         )
+   *     )
+   * )
+  */
+
+
   public function dutyStatusUpdate(Request $request) {
     $this->validate($request, [
       'duty_status' => 'required|in:on,off'
@@ -48,6 +74,25 @@ class DeliveryController extends Controller
     ], 200);
 
   }
+
+  /**
+   * @OA\Post(
+   *     path="/fetch-assigned-order",
+   *     summary="Fetch orders assigned to the delivery person",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\Response(
+   *         response=200,
+   *         description="Orders fetched or none found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order Fetched Successful"),
+   *             @OA\Property(property="data", type="object")
+   *         )
+   *     )
+   * )
+  */
 
   public function fetchAssignedOrder(Request $request) {
     $userId = $request->auth->sub;
@@ -100,6 +145,32 @@ class DeliveryController extends Controller
     ], 200);
   }
 
+  /**
+   * @OA\Post(
+   *     path="/update-order-status",
+   *     summary="Update the current status of an order",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"order_id", "order_status"},
+   *             @OA\Property(property="order_id", type="integer"),
+   *             @OA\Property(property="order_status", type="string", example="collected")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Order status updated successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order Status Updated Successfully")
+   *         )
+   *     )
+   * )
+  */
+
   public function updateOrderStatus(Request $request) {
     $this->validate($request, [
       'order_id' => 'required',
@@ -126,6 +197,32 @@ class DeliveryController extends Controller
       'message' => 'Order Status Updated Successfully',
     ], 200);
   }
+
+  /**
+   * @OA\Post(
+   *     path="/send-delivery-otp",
+   *     summary="Send delivery OTP to customer",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"order_id"},
+   *             @OA\Property(property="order_id", type="integer")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="OTP sent to customer",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="OTP has been successfully sent to the customer."),
+   *             @OA\Property(property="otp", type="string")
+   *         )
+   *     )
+   * )
+  */
 
   public function sendDeliveryOTP(Request $request) {
 
@@ -158,6 +255,32 @@ class DeliveryController extends Controller
       'otp'=> $otp
     ], 200);
   }
+
+  /**
+   * @OA\Post(
+   *     path="/complete-order",
+   *     summary="Mark order as delivered using OTP verification",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"order_id", "otp"},
+   *             @OA\Property(property="order_id", type="integer"),
+   *             @OA\Property(property="otp", type="string", minLength=4, maxLength=4)
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Order marked as delivered",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order Delivered Successfully")
+   *         )
+   *     )
+   * )
+  */
 
   public function completeOrder(Request $request){
     $this->validate($request,[
@@ -202,6 +325,24 @@ class DeliveryController extends Controller
       'message' => 'Order Delivered Successfully',
     ], 200);
   }
+
+  /**
+   * @OA\Post(
+   *     path="/order-history",
+   *     summary="Retrieve past delivery orders",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\Response(
+   *         response=200,
+   *         description="Order history response",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order Fetched Successful")
+   *         )
+   *     )
+   * )
+  */
 
   public function orderHistory(Request $request) {
     $userId = $request->auth->sub;
