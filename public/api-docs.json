@@ -1,0 +1,1058 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Food Delivery API",
+        "description": "API documentation for the food delivery system.",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/signup": {
+            "post": {
+                "tags": [
+                "Authentication"
+                ],
+                "summary": "Register a new delivery user",
+                "operationId": "signupUser",
+                "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": [
+                        "f_name",
+                        "s_name",
+                        "email",
+                        "phone_number",
+                        "password",
+                        "dob",
+                        "nationality",
+                        "is_non_british",
+                        "street_name",
+                        "city",
+                        "post_code",
+                        "home_phone"
+                        ],
+                        "properties": {
+                        "f_name": {
+                            "type": "string",
+                            "minLength": 3
+                        },
+                        "m_name": {
+                            "type": "string"
+                        },
+                        "s_name": {
+                            "type": "string",
+                            "minLength": 3
+                        },
+                        "email": {
+                            "type": "string",
+                            "format": "email"
+                        },
+                        "phone_number": {
+                            "type": "string"
+                        },
+                        "password": {
+                            "type": "string",
+                            "minLength": 8
+                        },
+                        "dob": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "nationality": {
+                            "type": "string"
+                        },
+                        "is_non_british": {
+                            "type": "boolean"
+                        },
+                        "home_no": {
+                            "type": "string"
+                        },
+                        "home_name": {
+                            "type": "string"
+                        },
+                        "street_name": {
+                            "type": "string"
+                        },
+                        "city": {
+                            "type": "string"
+                        },
+                        "county": {
+                            "type": "string"
+                        },
+                        "post_code": {
+                            "type": "string"
+                        },
+                        "home_phone": {
+                            "type": "string"
+                        }
+                        }
+                    }
+                    }
+                }
+                },
+                "responses": {
+                "201": {
+                    "description": "User Created Successfully",
+                    "content": {
+                    "application/json": {
+                        "schema": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                            "type": "integer",
+                            "example": 201
+                            },
+                            "success": {
+                            "type": "boolean",
+                            "example": true
+                            },
+                            "message": {
+                            "type": "string",
+                            "example": "User Created Successfully"
+                            }
+                        }
+                        }
+                    }
+                    }
+                }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Login existing user",
+                "operationId": "2dd578ff7aba2721293dac66833b27d1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 8
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login Successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Login Successful"
+                                        },
+                                        "accessToken": {
+                                            "type": "string"
+                                        },
+                                        "refreshToken": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 400
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invalid Credentials"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/send-otp": {
+            "post": {
+                "tags": [
+                    "OTP"
+                ],
+                "summary": "Send OTP to user's phone number",
+                "operationId": "621a46401df526ff69f1ebffaa409683",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone_number"
+                                ],
+                                "properties": {
+                                    "phone_number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP Sent Successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP Sent Successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 429
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Too Many Requests Sent"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/verify-otp": {
+            "post": {
+                "tags": [
+                    "OTP"
+                ],
+                "summary": "Verify received OTP",
+                "operationId": "a831f29b5b0ef0b5e8f504393679ae46",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone_number",
+                                    "otp"
+                                ],
+                                "properties": {
+                                    "phone_number": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string",
+                                        "minLength": 4
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP Verified",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP Verified"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid OTP or Expired",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 400
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invalid OTP"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get new access token using refresh token",
+                "operationId": "eed0a6ae2b59ce4dc8996021674b4146",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "refresh_token"
+                                ],
+                                "properties": {
+                                    "refresh_token": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "New access token generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Login Successful"
+                                        },
+                                        "accessToken": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing parameters",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 400
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Missing Parameters"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token expired",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 401
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Token Expired"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/duty-status": {
+            "post": {
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Update delivery person duty status",
+                "operationId": "4a66918b8357754ef74602d90ecff878",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "duty_status"
+                                ],
+                                "properties": {
+                                    "duty_status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "on",
+                                            "off"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Duty status updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Duty Status Updated Successful"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/fetch-assigned-order": {
+            "post": {
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Fetch orders assigned to the delivery person",
+                "operationId": "b27a7abd89a9fbadc69f31c3879f0763",
+                "responses": {
+                    "200": {
+                        "description": "Orders fetched or none found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order Fetched Successful"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/update-order-status": {
+            "post": {
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Update the current status of an order",
+                "operationId": "21cb45a1b251dc2aae7b97e1c97ded02",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "order_id",
+                                    "order_status"
+                                ],
+                                "properties": {
+                                    "order_id": {
+                                        "type": "integer"
+                                    },
+                                    "order_status": {
+                                        "type": "string",
+                                        "example": "collected"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order status updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order Status Updated Successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/send-delivery-otp": {
+            "post": {
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Send delivery OTP to customer",
+                "operationId": "2e74486b4c60c0913051f533af4b9525",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "order_id"
+                                ],
+                                "properties": {
+                                    "order_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP sent to customer",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP has been successfully sent to the customer."
+                                        },
+                                        "otp": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/complete-order": {
+            "post": {
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Mark order as delivered using OTP verification",
+                "operationId": "8936b48227f062cc17dcb053776031cd",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "order_id",
+                                    "otp"
+                                ],
+                                "properties": {
+                                    "order_id": {
+                                        "type": "integer"
+                                    },
+                                    "otp": {
+                                        "type": "string",
+                                        "maxLength": 4,
+                                        "minLength": 4
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order marked as delivered",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order Delivered Successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/order-history": {
+            "post": {
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Retrieve past delivery orders",
+                "operationId": "18a6c3409a4d0b2f9fe94de9a5ec0740",
+                "responses": {
+                    "200": {
+                        "description": "Order history response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order Fetched Successful"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/kin-info-update": {
+            "post": {
+                "tags": ["Profile"],
+                "summary": "Update next of kin information",
+                "operationId": "updateKinInfo",
+                "security": [
+                { "bearerAuth": [] }
+                ],
+                "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["name", "phone", "relationship", "address"],
+                        "properties": {
+                        "name": { "type": "string" },
+                        "phone": { "type": "string" },
+                        "relationship": { "type": "string" },
+                        "address": { "type": "string" }
+                        }
+                    }
+                    }
+                }
+                },
+                "responses": {
+                "200": {
+                    "description": "Kin Info Updated Successful",
+                    "content": {
+                    "application/json": {
+                        "schema": {
+                        "type": "object",
+                        "properties": {
+                            "code": { "type": "integer", "example": 200 },
+                            "success": { "type": "boolean", "example": true },
+                            "message": { "type": "string", "example": "Kin Info Updated Successful" }
+                        }
+                        }
+                    }
+                    }
+                }
+                }
+            }
+        },
+        "/bank-info-update": {
+            "post": {
+                "tags": ["Profile"],
+                "summary": "Update bank account information",
+                "operationId": "updateBankAccInfo",
+                "security": [
+                { "bearerAuth": [] }
+                ],
+                "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["name", "acc_number", "sort_code", "is_account_in_your_name", "name_on_the_account"],
+                        "properties": {
+                        "name": { "type": "string" },
+                        "acc_number": { "type": "string" },
+                        "sort_code": { "type": "string" },
+                        "is_account_in_your_name": { "type": "boolean" },
+                        "name_on_the_account": { "type": "string" }
+                        }
+                    }
+                    }
+                }
+                },
+                "responses": {
+                "200": {
+                    "description": "Bank Account Info Updated Successful",
+                    "content": {
+                    "application/json": {
+                        "schema": {
+                        "type": "object",
+                        "properties": {
+                            "code": { "type": "integer", "example": 200 },
+                            "success": { "type": "boolean", "example": true },
+                            "message": { "type": "string", "example": "Bank Account Info Updated Successful" }
+                        }
+                        }
+                    }
+                    }
+                }
+                }
+            }
+        },
+        "/profile-info-update": {
+            "post": {
+                "tags": ["Profile"],
+                "summary": "Update additional personal and document information",
+                "operationId": "updateAdditionalInfo",
+                "security": [
+                { "bearerAuth": [] }
+                ],
+                "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": [
+                        "requires_work_permit",
+                        "uses_car",
+                        "uses_motorcycle",
+                        "uses_bicycle",
+                        "has_motoring_convictions",
+                        "is_uk_licence",
+                        "licence_country_of_issue",
+                        "is_agreed_privacy_policy",
+                        "docs"
+                        ],
+                        "properties": {
+                        "requires_work_permit": {
+                            "type": "boolean"
+                        },
+                        "uses_car": {
+                            "type": "boolean"
+                        },
+                        "uses_motorcycle": {
+                            "type": "boolean"
+                        },
+                        "uses_bicycle": {
+                            "type": "boolean"
+                        },
+                        "has_motoring_convictions": {
+                            "type": "boolean"
+                        },
+                        "is_uk_licence": {
+                            "type": "boolean"
+                        },
+                        "licence_country_of_issue": {
+                            "type": "string"
+                        },
+                        "is_agreed_privacy_policy": {
+                            "type": "boolean"
+                        },
+                        "has_medical_condition": {
+                            "type": "boolean"
+                        },
+                        "can_be_used_as_reference": {
+                            "type": "boolean"
+                        },
+                        "docs": {
+                            "type": "array",
+                            "items": {
+                            "type": "object",
+                            "required": ["doc_type", "doc_number", "doc_expiry", "doc_url"],
+                            "properties": {
+                                "doc_type": {
+                                "type": "string",
+                                "enum": ["visa", "passport", "ni", "license", "sign"]
+                                },
+                                "doc_number": {
+                                "type": "string"
+                                },
+                                "doc_expiry": {
+                                "type": "string",
+                                "format": "date"
+                                },
+                                "doc_url": {
+                                "type": "string"
+                                }
+                            }
+                            }
+                        },
+                        "title": {
+                            "type": "string"
+                        },
+                        "f_name": {
+                            "type": "string"
+                        },
+                        "s_name": {
+                            "type": "string"
+                        },
+                        "company": {
+                            "type": "string"
+                        },
+                        "phone": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string",
+                            "format": "email"
+                        }
+                        }
+                    }
+                    }
+                }
+                },
+                "responses": {
+                "200": {
+                    "description": "Profile Info Updated Successful",
+                    "content": {
+                    "application/json": {
+                        "schema": {
+                        "type": "object",
+                        "properties": {
+                            "code": { "type": "integer", "example": 200 },
+                            "success": { "type": "boolean", "example": true },
+                            "message": { "type": "string", "example": "Profile Info Updated Successful" }
+                        }
+                        }
+                    }
+                    }
+                },
+                "401": {
+                    "description": "User not approved by admin",
+                    "content": {
+                    "application/json": {
+                        "schema": {
+                        "type": "object",
+                        "properties": {
+                            "code": { "type": "integer", "example": 401 },
+                            "success": { "type": "boolean", "example": true },
+                            "message": { "type": "string", "example": "User not approved by admin" }
+                        }
+                        }
+                    }
+                    }
+                }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Authentication"
+        },
+        {
+            "name": "OTP",
+            "description": "OTP"
+        },
+        {
+            "name": "Delivery",
+            "description": "Delivery"
+        }
+    ]
+}
