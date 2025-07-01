@@ -954,7 +954,7 @@
                             "type": "array",
                             "items": {
                             "type": "object",
-                            "required": ["doc_type", "doc_number", "doc_expiry", "doc_url"],
+                            "required": ["doc_type"],
                             "properties": {
                                 "doc_type": {
                                 "type": "string",
@@ -973,24 +973,19 @@
                             }
                             }
                         },
-                        "title": {
-                            "type": "string"
-                        },
-                        "f_name": {
-                            "type": "string"
-                        },
-                        "s_name": {
-                            "type": "string"
-                        },
-                        "company": {
-                            "type": "string"
-                        },
-                        "phone": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string",
-                            "format": "email"
+                        "user_references": {
+                            "type": "array",
+                            "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": { "type": "string" },
+                                "f_name": { "type": "string" },
+                                "s_name": { "type": "string" },
+                                "company": { "type": "string" },
+                                "phone": { "type": "string" },
+                                "email": { "type": "string", "format": "email" }
+                            }
+                            }
                         }
                         }
                     }

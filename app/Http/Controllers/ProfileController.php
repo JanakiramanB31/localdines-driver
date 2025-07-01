@@ -235,8 +235,7 @@ class ProfileController extends Controller
    *         @OA\JsonContent(
    *             required={
    *                 "requires_work_permit", "uses_car", "uses_motorcycle", "uses_bicycle",
-   *                 "has_motoring_convictions", "is_uk_licence", "licence_country_of_issue",
-   *                 "has_medical_condition", "can_be_used_as_reference", "is_agreed_privacy_policy", "docs"
+   *                 "has_motoring_convictions", "is_uk_licence", "licence_country_of_issue", "is_agreed_privacy_policy", "docs"
    *             },
    *             @OA\Property(property="requires_work_permit", type="boolean"),
    *             @OA\Property(property="uses_car", type="boolean"),
@@ -248,12 +247,12 @@ class ProfileController extends Controller
    *             @OA\Property(property="has_medical_condition", type="boolean"),
    *             @OA\Property(property="can_be_used_as_reference", type="boolean"),
    *             @OA\Property(property="is_agreed_privacy_policy", type="boolean"),
-   *             
+   *
    *             @OA\Property(
    *                 property="docs",
    *                 type="array",
    *                 @OA\Items(
-   *                     required={"doc_type", "doc_number", "doc_expiry", "doc_url"},
+   *                     required={"doc_type"},
    *                     @OA\Property(property="doc_type", type="string", enum={"visa", "passport", "ni", "license", "sign"}),
    *                     @OA\Property(property="doc_number", type="string"),
    *                     @OA\Property(property="doc_expiry", type="string", format="date"),
@@ -261,12 +260,18 @@ class ProfileController extends Controller
    *                 )
    *             ),
    *
-   *             @OA\Property(property="title", type="string"),
-   *             @OA\Property(property="f_name", type="string"),
-   *             @OA\Property(property="s_name", type="string"),
-   *             @OA\Property(property="company", type="string"),
-   *             @OA\Property(property="phone", type="string"),
-   *             @OA\Property(property="email", type="string", format="email")
+   *             @OA\Property(
+   *                 property="user_references",
+   *                 type="array",
+   *                 @OA\Items(
+   *                     @OA\Property(property="title", type="string"),
+   *                     @OA\Property(property="f_name", type="string"),
+   *                     @OA\Property(property="s_name", type="string"),
+   *                     @OA\Property(property="company", type="string"),
+   *                     @OA\Property(property="phone", type="string"),
+   *                     @OA\Property(property="email", type="string", format="email")
+   *                 )
+   *             )
    *         )
    *     ),
    *     @OA\Response(
@@ -356,24 +361,35 @@ class ProfileController extends Controller
     foreach ($request->docs as $doc) {
       $deliveryPartnerDocs = new FoodDeliveryPartnerDocument(); 
       $deliveryPartnerDocs->partner_id = $userId;
-      $deliveryPartnerDocs->doc_type = $doc['doc_type'];
-      $deliveryPartnerDocs->doc_number = $doc['doc_number'];
-      $deliveryPartnerDocs->doc_expiry = $doc['doc_expiry'];
-      $deliveryPartnerDocs->doc_url = $doc['doc_url'];
+      $deliveryPartnerDocs->doc_type = $doc['doc_type'] ?? null;
+      $deliveryPartnerDocs->doc_number = $doc['doc_number'] ?? null;
+      $deliveryPartnerDocs->doc_expiry = $doc['doc_expiry'] ?? null;
+      $deliveryPartnerDocs->doc_url = $doc['doc_url'] ?? null;
       
       $deliveryPartnerDocs->save();
     }
 
-    if ($request->f_name || $request->s_name || $request->company || $request->phone || $request->email) {
-      $deliveryPartnerKinInfo = new FoodDeliveryPartnerUserReference();
-      $deliveryPartnerKinInfo->partner_id = $userId;
-      $deliveryPartnerKinInfo->title = $request->title;
-      $deliveryPartnerKinInfo->f_name = $request->f_name;
-      $deliveryPartnerKinInfo->s_name = $request->s_name;
-      $deliveryPartnerKinInfo->company = $request->company;
-      $deliveryPartnerKinInfo->phone = $request->phone;
-      $deliveryPartnerKinInfo->email = $request->email;
-      $deliveryPartnerKinInfo->save();
+    if (is_array($request->user_references)) {
+      foreach($request->user_references as $userRef) {
+        if (
+          !empty($userRef['title']) ||
+          !empty($userRef['f_name']) ||
+          !empty($userRef['s_name']) ||
+          !empty($userRef['company']) ||
+          !empty($userRef['phone']) ||
+          !empty($userRef['email'])
+        ) {
+          $deliveryPartnerUserRefInfo = new FoodDeliveryPartnerUserReference();
+          $deliveryPartnerUserRefInfo->partner_id = $userId;
+          $deliveryPartnerUserRefInfo->title = $userRef['title'] ?? null;
+          $deliveryPartnerUserRefInfo->f_name = $userRef['f_name'] ?? null;
+          $deliveryPartnerUserRefInfo->s_name = $userRef['s_name'] ?? null;
+          $deliveryPartnerUserRefInfo->company = $userRef['company'] ?? null;
+          $deliveryPartnerUserRefInfo->phone = $userRef['phone'] ?? null;
+          $deliveryPartnerUserRefInfo->email = $userRef['email'] ?? null;
+          $deliveryPartnerUserRefInfo->save();
+        }
+      }
     }
 
     return response()->json([
