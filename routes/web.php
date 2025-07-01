@@ -63,7 +63,7 @@ $router->group(['middleware' => 'auth'], function () use ($router) {
   $router->post('/bank-info-update', 'ProfileController@updateBankAccInfo');
 
   /* pdation Additional Info */
-  $router->post('/update-profile-info', 'ProfileController@updateProfileInfo');
+  $router->post('/profile-info-update', 'ProfileController@updateProfileInfo');
 
 });
 

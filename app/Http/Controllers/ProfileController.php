@@ -219,7 +219,7 @@ class ProfileController extends Controller
     return response()->json([
       'code' => 200,
       'success' => true,
-      'message' => 'Bank Account Info Updated Successful',
+      'message' => 'Bank Account Info Updated Successfully',
     ], 200);
 
   }
@@ -395,7 +395,7 @@ class ProfileController extends Controller
     return response()->json([
       'code' => 200,
       'success' => true,
-      'message' => 'Profile Info Updated Successful',
+      'message' => 'Profile Info Updated Successfully',
     ], 200);
 
   }
