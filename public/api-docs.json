@@ -894,7 +894,7 @@
                 }
             }
         },
-        "/profile-info-update": {
+       "/profile-info-update": {
             "post": {
                 "tags": ["Profile"],
                 "summary": "Update additional personal and document information",
@@ -933,21 +933,17 @@
                             "type": "boolean"
                         },
                         "has_motoring_convictions": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "Required if uses_car or uses_motorcycle is true"
                         },
                         "is_uk_licence": {
                             "type": "boolean"
                         },
                         "licence_country_of_issue": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Required if is_uk_licence is true"
                         },
                         "is_agreed_privacy_policy": {
-                            "type": "boolean"
-                        },
-                        "has_medical_condition": {
-                            "type": "boolean"
-                        },
-                        "can_be_used_as_reference": {
                             "type": "boolean"
                         },
                         "docs": {
@@ -961,29 +957,19 @@
                                 "enum": ["visa", "passport", "ni", "license", "sign"]
                                 },
                                 "doc_number": {
-                                "type": "string"
+                                "type": "string",
+                                "nullable": true
                                 },
                                 "doc_expiry": {
                                 "type": "string",
-                                "format": "date"
+                                "format": "date",
+                                "nullable": true
                                 },
                                 "doc_url": {
-                                "type": "string"
+                                "type": "string",
+                                "format": "binary",
+                                "description": "File (jpeg, png, jpg, gif, svg, pdf). Max 2MB"
                                 }
-                            }
-                            }
-                        },
-                        "user_references": {
-                            "type": "array",
-                            "items": {
-                            "type": "object",
-                            "properties": {
-                                "title": { "type": "string" },
-                                "f_name": { "type": "string" },
-                                "s_name": { "type": "string" },
-                                "company": { "type": "string" },
-                                "phone": { "type": "string" },
-                                "email": { "type": "string", "format": "email" }
                             }
                             }
                         }
@@ -1016,7 +1002,7 @@
                         "type": "object",
                         "properties": {
                             "code": { "type": "integer", "example": 401 },
-                            "success": { "type": "boolean", "example": true },
+                            "success": { "type": "boolean", "example": false },
                             "message": { "type": "string", "example": "User not approved by admin" }
                         }
                         }
@@ -1026,6 +1012,7 @@
                 }
             }
         }
+
     },
     "components": {
         "securitySchemes": {

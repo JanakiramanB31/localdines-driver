@@ -23,7 +23,7 @@ class ProfileController extends Controller
    */
   public function __construct()
   {
-    $this->middleware('auth');
+   $this->middleware('auth');
   }
 
   // public function updateprofileInfo(Request $request) {
@@ -301,9 +301,9 @@ class ProfileController extends Controller
       /* Documents array validation */
       'docs' => 'required|array',
       'docs.*.doc_type' => 'required|in:visa,passport,ni,license,sign',
-      //'docs.*.doc_number' => 'required',
-      //'docs.*.doc_expiry' => 'required|date',
-      //'docs.*.doc_url' => 'required|string',
+      'docs.*.doc_number' => 'nullable|string',
+      'docs.*.doc_expiry' => 'nullable|date',
+      'docs.*.doc_url' => 'file|mimes:jpeg,png,jpg,gif,svg,pdf|max:2048',
 
       'uses_car' => 'required|boolean',
       'uses_motorcycle' => 'required|boolean',
@@ -358,13 +358,21 @@ class ProfileController extends Controller
 
     $deliveryPartnerOtherInfo->save();
 
-    foreach ($request->docs as $doc) {
+    foreach ($request->docs as $index => $doc) {
       $deliveryPartnerDocs = new FoodDeliveryPartnerDocument(); 
       $deliveryPartnerDocs->partner_id = $userId;
       $deliveryPartnerDocs->doc_type = $doc['doc_type'] ?? null;
       $deliveryPartnerDocs->doc_number = $doc['doc_number'] ?? null;
       $deliveryPartnerDocs->doc_expiry = $doc['doc_expiry'] ?? null;
-      $deliveryPartnerDocs->doc_url = $doc['doc_url'] ?? null;
+      if ($request->hasFile("docs.$index.doc_url")) {
+        $document = $request->file("docs.$index.doc_url");
+        $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();        
+        $publicPath = base_path('public');
+        $document->move($publicPath . '/images/users/', $docName);
+        $deliveryPartnerDocs->doc_url = $docName;
+      } else {
+        $deliveryPartnerDocs->doc_url = null;
+      }
       
       $deliveryPartnerDocs->save();
     }
