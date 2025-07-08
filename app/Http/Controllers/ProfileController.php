@@ -303,7 +303,7 @@ class ProfileController extends Controller
       'docs.*.doc_type' => 'required|in:visa,passport,ni,license,sign',
       'docs.*.doc_number' => 'nullable|string',
       'docs.*.doc_expiry' => 'nullable|date',
-      'docs.*.doc_url' => 'file|mimes:jpeg,png,jpg,gif,svg,pdf|max:2048',
+      'docs.*.doc_url' => 'file|mimes:jpeg,png,jpg,svg,pdf|max:2048',
 
       'uses_car' => 'required|boolean',
       'uses_motorcycle' => 'required|boolean',
