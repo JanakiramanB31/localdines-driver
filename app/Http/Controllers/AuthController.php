@@ -141,7 +141,10 @@ class AuthController extends Controller
     return response()->json([
       'code' => '201',
       'success' => true,
-      'message'=> "User Created Succesfully"
+      'message'=> "User Created Succesfully",
+      'data' => [
+        'user_id' => $deliveryPartner->id
+      ]
     ], 201);
   }
 
@@ -243,7 +246,8 @@ class AuthController extends Controller
       'success' => true,
       'message' => 'Login Successful',
       'accessToken' => $accessToken,
-      'refreshToken' => $refreshToken
+      'refreshToken' => $refreshToken,
+      'userID' => $deliveryPartner->id
     ], 200);
   }
 
