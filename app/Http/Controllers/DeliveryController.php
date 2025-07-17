@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FoodDeliveryPartner;
-use App\Models\FoodDeliveryPartnersTakenOrder;
+use App\Models\FoodDeliveryPartnerTakenOrder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -108,7 +108,7 @@ class DeliveryController extends Controller
       ->values();
     });
 
-    $ordersData = FoodDeliveryPartnersTakenOrder::with([
+    $ordersData = FoodDeliveryPartnerTakenOrder::with([
     'order' => function($query) {
       $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'price', 'price_packing', 'price_delivery', 'discount', 'subtotal', 'tax', 'total', 'customer_paid');
     },
@@ -117,19 +117,28 @@ class DeliveryController extends Controller
     },
     ])->where('user_id', $userId)->where('order_status', 'accepted')->get();
 
-    $orderData1 = $ordersData->map(function($order_data, $key) use ($productData) {
-      return $order_data->order->order_items->map(function($item, $key) use ($productData) {
+    //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->where('order_status', 'accepted')->get();
+
+
+    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData) {
+      $order = $order_data->order;
+
+      // Map and enhance order_items
+      $order->order_items =  $order->order_items->map(function($item, $key) use ($productData) {
         $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
         $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
         $item['special_instruction'] = json_decode($item['special_instruction']);
         $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
         $item['name'] = $productName;
         $item['description'] = $productDesc;
+        unset($item['foreign_id']);
+        unset($item['type']);
         return $item; 
       });
+      return $order;
     });
 
-    if(count($orderData1) == 0) {
+    if(count($updatedOrderData) == 0) {
       return response()->json([
         'code' => 200,
         'success' => true,
@@ -141,7 +150,7 @@ class DeliveryController extends Controller
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $orderData1
+      'data' => $updatedOrderData
     ], 200);
   }
 
@@ -178,7 +187,7 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnersTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
      
     if(!$orderData) {
       return response()->json([
@@ -231,7 +240,7 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnersTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
     
     if(!$orderData) {
       return response()->json([
@@ -289,7 +298,7 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnersTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
     
     if(!$orderData) {
       return response()->json([
@@ -347,10 +356,48 @@ class DeliveryController extends Controller
   public function orderHistory(Request $request) {
     $userId = $request->auth->sub;
 
-    $ordersData = FoodDeliveryPartnersTakenOrder::with('order')->where('user_id', $userId)->get();
-     //return $getOrder;
+    $productData = Cache::remember('product_data', Carbon::now()->addDay(), function() {
+      return DB::table('food_delivery_plugin_base_multi_lang')
+      ->where('model', 'pjProduct')->select('foreign_id', 'field', 'content')->get()
+      ->groupBy('foreign_id')
+      ->map(fn($items, $foreignId) => array_merge(
+          ['foreign_id' => $foreignId],
+          $items->pluck('content', 'field')->toArray()
+      ))
+      ->values();
+    });
 
-    if(count($ordersData) == 0) {
+    $ordersData = FoodDeliveryPartnerTakenOrder::with([
+    'order' => function($query) {
+      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'price', 'price_packing', 'price_delivery', 'discount', 'subtotal', 'tax', 'total', 'customer_paid');
+    },
+    'order.order_items' => function($query) {
+      $query->select('id', 'order_id', 'type', 'foreign_id', 'special_instruction', 'custom_special_instruction');
+    },
+    ])->where('user_id', $userId)->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
+
+
+    //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->get();
+     
+    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData) {
+      $order = $order_data;
+
+      // Map and enhance order_items
+      $order->order->order_items =  $order->order->order_items->map(function($item, $key) use ($productData) {
+        $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
+        $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
+        $item['special_instruction'] = json_decode($item['special_instruction']);
+        $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
+        $item['name'] = $productName;
+        $item['description'] = $productDesc;
+        unset($item['foreign_id']);
+        unset($item['type']);
+        return $item; 
+      });
+      return $order;
+    });
+
+    if(count($updatedOrderData) == 0) {
       return response()->json([
         'code' => 200,
         'success' => true,
@@ -362,7 +409,7 @@ class DeliveryController extends Controller
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $ordersData
+      'data' => $updatedOrderData
     ], 200);
   }
 }

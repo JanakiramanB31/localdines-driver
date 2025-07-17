@@ -9,7 +9,7 @@ use App\Models\FoodDeliveryPartnerBankAccInfo;
 use App\Models\FoodDeliveryPartnerDocument;
 use App\Models\FoodDeliveryPartnerKinInfo;
 use App\Models\FoodDeliveryPartnerOtherInfo;
-use App\Models\FoodDeliveryPartnersLoginOtp;
+use App\Models\FoodDeliveryPartnerLoginOtp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -290,7 +290,7 @@ class AuthController extends Controller
       'phone_number' => 'required|integer',
     ]);
 
-    $otpData = FoodDeliveryPartnersLoginOtp::where('phone_number', $request->phone_number)->OrderBy('created_at', 'desc')->first();
+    $otpData = FoodDeliveryPartnerLoginOtp::where('phone_number', $request->phone_number)->OrderBy('created_at', 'desc')->first();
 
     if ($otpData && $otpData->otp && $otpData->expires_at > time()) {
       return response()->json([
@@ -302,7 +302,7 @@ class AuthController extends Controller
 
     $otp = mt_rand(1000, 9999);
 
-    $newOTP = new FoodDeliveryPartnersLoginOtp();
+    $newOTP = new FoodDeliveryPartnerLoginOtp();
     $newOTP->phone_number = $request->phone_number;
     $newOTP->otp = $otp;
     $newOTP->expires_at = time() + 1*60;
@@ -357,7 +357,7 @@ class AuthController extends Controller
       'otp' => 'required|min:4'
     ]);
 
-    $otpData = FoodDeliveryPartnersLoginOtp::where('phone_number', $request->phone_number)->whereNull('status')->OrderBy('created_at', 'desc')->first();
+    $otpData = FoodDeliveryPartnerLoginOtp::where('phone_number', $request->phone_number)->whereNull('status')->OrderBy('created_at', 'desc')->first();
 
     if(!$otpData) {
       return response()->json([
