@@ -49,7 +49,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
   $router->group(['middleware' => 'auth'], function () use ($router) {
     
     /* Dashboard Route */
-    $router->get('/', 'HomeController@home');
+    $router->get('/dashboard', 'HomeController@home');
 
     /* Order Routes */
     $router->group(['prefix' => 'order'], function () use ($router) {
