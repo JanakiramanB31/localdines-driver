@@ -113,7 +113,7 @@ class DeliveryController extends Controller
       $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
     },
     'order.order_items' => function($query) {
-      $query->select('id', 'order_id', 'type', 'foreign_id', 'cnt', 'price', 'special_instruction', 'custom_special_instruction');
+      $query->select('foreign_id', 'cnt', 'price');
     },
     ])->where('user_id', $userId)->where('order_status', 'accepted')->get();
 
@@ -138,13 +138,8 @@ class DeliveryController extends Controller
         $item['price'] = $price;
         // $item['description'] = $productDesc;
         unset(
-          $item['id'], 
           $item['cnt'], 
-          $item['order_id'], 
-          $item['special_instruction'], 
-          $item['custom_special_instruction'], 
-          $item['foreign_id'], 
-          $item['type']
+          $item['foreign_id']
         );
 
         return $item; 
@@ -170,7 +165,7 @@ class DeliveryController extends Controller
         'total'         => $order->total,
         'customer_paid' => $order->customer_paid,
         'order_items'   => $order->order_items,
-    ];
+      ];
     });
 
     if(count($updatedOrderData) == 0) {
@@ -404,32 +399,60 @@ class DeliveryController extends Controller
 
     $ordersData = FoodDeliveryPartnerTakenOrder::with([
     'order' => function($query) {
-      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'price', 'price_packing', 'price_delivery', 'discount', 'subtotal', 'tax', 'total', 'customer_paid');
+      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
     },
     'order.order_items' => function($query) {
-      $query->select('id', 'order_id', 'type', 'foreign_id', 'special_instruction', 'custom_special_instruction');
+      $query->select('foreign_id', 'cnt', 'price');
     },
     ])->where('user_id', $userId)->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
 
 
     //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->get();
-     
-    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData) {
+    $pickupLocation =  DB::table('food_delivery_plugin_base_multi_lang')->select('field', 'content')->where('model', 'pjLocation')->where('locale', 1)->pluck('content', 'field');
+
+    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation) {
       $order = $order_data;
 
       // Map and enhance order_items
       $order->order->order_items =  $order->order->order_items->map(function($item, $key) use ($productData) {
         $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
-        $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
-        $item['special_instruction'] = json_decode($item['special_instruction']);
-        $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
+        // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
+        // $item['special_instruction'] = json_decode($item['special_instruction']);
+        // $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
+        $price = $item->price;
+        unset($item['price']);
         $item['name'] = $productName;
-        $item['description'] = $productDesc;
-        unset($item['foreign_id']);
-        unset($item['type']);
+        $item['quantity'] = $item->cnt;
+        $item['price'] = $price;
+        // $item['description'] = $productDesc; 
+        unset(
+          $item['cnt'], 
+          $item['foreign_id']
+        );
+
         return $item; 
       });
-      return $order;
+      return [
+        'id'            => $order->id,
+        'order_id'      => $order->order_id,
+        'first_name'    => $order->first_name,
+        'surname'       => $order->surname,
+        'phone_no'      => $order->phone_no,
+        'p_name'        => $pickupLocation['name'] ?? 'N/A',
+        'p_address'     => $pickupLocation['address'] ?? 'N/A',
+        'p_notes'       => $order->p_notes,
+        'd_address_1'   => $order->d_address_1,
+        'd_address_2'   => $order->d_address_2,
+        'd_city'        => $order->d_city,
+        'd_state'       => $order->d_state,
+        'd_zip'         => $order->d_zip,
+        'd_notes'       => $order->d_notes,
+        'post_code'     => $order->post_code,
+        'subtotal'      => $order->subtotal,
+        'total'         => $order->total,
+        'customer_paid' => $order->customer_paid,
+        'order_items'   => $order->order_items,
+      ];
     });
 
     if(count($updatedOrderData) == 0) {
