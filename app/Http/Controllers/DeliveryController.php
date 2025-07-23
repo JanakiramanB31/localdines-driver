@@ -113,7 +113,7 @@ class DeliveryController extends Controller
       $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
     },
     'order.order_items' => function($query) {
-      $query->select('foreign_id', 'cnt', 'price');
+      $query->select('id', 'order_id', 'foreign_id', 'cnt', 'price');
     },
     ])->where('user_id', $userId)->where('order_status', 'accepted')->get();
 
@@ -138,7 +138,9 @@ class DeliveryController extends Controller
         $item['price'] = $price;
         // $item['description'] = $productDesc;
         unset(
+          $item['id'], 
           $item['cnt'], 
+          $item['order_id'], 
           $item['foreign_id']
         );
 
@@ -402,7 +404,7 @@ class DeliveryController extends Controller
       $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
     },
     'order.order_items' => function($query) {
-      $query->select('foreign_id', 'cnt', 'price');
+      $query->select('id', 'order_id', 'foreign_id', 'cnt', 'price');
     },
     ])->where('user_id', $userId)->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
 
@@ -426,33 +428,36 @@ class DeliveryController extends Controller
         $item['price'] = $price;
         // $item['description'] = $productDesc; 
         unset(
+          $item['id'], 
           $item['cnt'], 
+          $item['order_id'], 
           $item['foreign_id']
         );
 
         return $item; 
       });
-      return [
-        'id'            => $order->id,
-        'order_id'      => $order->order_id,
-        'first_name'    => $order->first_name,
-        'surname'       => $order->surname,
-        'phone_no'      => $order->phone_no,
-        'p_name'        => $pickupLocation['name'] ?? 'N/A',
-        'p_address'     => $pickupLocation['address'] ?? 'N/A',
-        'p_notes'       => $order->p_notes,
-        'd_address_1'   => $order->d_address_1,
-        'd_address_2'   => $order->d_address_2,
-        'd_city'        => $order->d_city,
-        'd_state'       => $order->d_state,
-        'd_zip'         => $order->d_zip,
-        'd_notes'       => $order->d_notes,
-        'post_code'     => $order->post_code,
-        'subtotal'      => $order->subtotal,
-        'total'         => $order->total,
-        'customer_paid' => $order->customer_paid,
-        'order_items'   => $order->order_items,
-      ];
+      return $order;
+      // return [
+      //   'id'            => $order->id,
+      //   'order_id'      => $order->order_id,
+      //   'first_name'    => $order->first_name,
+      //   'surname'       => $order->surname,
+      //   'phone_no'      => $order->phone_no,
+      //   'p_name'        => $pickupLocation['name'] ?? 'N/A',
+      //   'p_address'     => $pickupLocation['address'] ?? 'N/A',
+      //   'p_notes'       => $order->p_notes,
+      //   'd_address_1'   => $order->d_address_1,
+      //   'd_address_2'   => $order->d_address_2,
+      //   'd_city'        => $order->d_city,
+      //   'd_state'       => $order->d_state,
+      //   'd_zip'         => $order->d_zip,
+      //   'd_notes'       => $order->d_notes,
+      //   'post_code'     => $order->post_code,
+      //   'subtotal'      => $order->subtotal,
+      //   'total'         => $order->total,
+      //   'customer_paid' => $order->customer_paid,
+      //   'order_items'   => $order->order_items,
+      // ];
     });
 
     if(count($updatedOrderData) == 0) {
