@@ -26,6 +26,153 @@ class ProfileController extends Controller
    $this->middleware('auth');
   }
 
+  public function getProfileInfo(Request $request) {
+    
+    $userId = $request->auth->sub;
+
+    $userData = FoodDeliveryPartner::find($userId);
+
+    if(!$userData) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    if ($userData->admin_approval == "rejected" ) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Rejected by admin'
+      ], 401);
+    }
+
+    if ($userData->admin_approval != "accepted" ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User not approved by admin'
+      ], 401);
+    }
+
+    if ($userData->is_active == 0 ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User status is Inactive'
+      ], 401);
+    }
+
+    $data = $userData->toArray();
+
+    unset($data['admin_approval'], $data['is_active'], $data['updated_at'], $data['approved_at']);
+    $data['duty_status'] = $data['duty_status'] == 1 ? "online" : "offline";
+    $data['is_non_british'] = $data['is_non_british'] == 1 ? true : false;
+    $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
+    unset($data['created_at']);
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'profile Info retrieved Successfully',
+      'data' => $data
+    ], 200);
+  }
+
+  public function getDutyStatus(Request $request) {
+    
+    $userId = $request->auth->sub;
+
+    $userData = FoodDeliveryPartner::find($userId);
+
+    if(!$userData) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    if ($userData->admin_approval == "rejected" ) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Rejected by admin'
+      ], 401);
+    }
+
+
+    if ($userData->admin_approval != "accepted" ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User not approved by admin'
+      ], 401);
+    }
+
+    if ($userData->is_active == 0 ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User status is Inactive'
+      ], 401);
+    }
+
+    $dutyStatus = $userData->duty_status == true ? "online" : "offline";
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Duty Status retrieved Successfully',
+      'data' => ([
+        'duty_status' => $dutyStatus
+      ])
+    ], 200);
+  }
+
+  public function checkAccountStatus(Request $request) {
+    
+    $userId = $request->auth->sub;
+
+    $userData = FoodDeliveryPartner::find($userId);
+
+    if(!$userData) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    $data = $userData->toArray();
+
+    unset(
+      $data['title'], 
+      $data['phone_number'], 
+      $data['gender'],
+      $data['email'],
+      $data['is_active'],
+      $data['nationality'],
+      $data['f_name'],
+      $data['s_name'],
+      $data['m_name'],
+      $data['dob'],
+      $data['is_non_british']
+    );
+    $data['duty_status'] = $data['duty_status'] == 1 ? "online" : "offline";
+    $data['approved_at'] = $data['approved_at'] !== null ? Carbon::parse($data['approved_at'])->format('d-m-Y') : null;
+    $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
+    unset($data['created_at'], $data['updated_at']);
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Account Status retrieved Successfully',
+      'data' => $data
+    ], 200);
+  }
+
   // public function updateprofileInfo(Request $request) {
   //   $this->validate($request, [
   //     'has_motoring_convictions' => 'required|boolean',
@@ -78,32 +225,32 @@ class ProfileController extends Controller
   // }
 
   /**
- * @OA\Post(
- *     path="/profile/update-kin-info",
- *     summary="Update next of kin information",
- *     tags={"Profile"},
- *     security={{"bearerAuth":{}}},
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             required={"name", "phone", "relationship", "address"},
- *             @OA\Property(property="name", type="string"),
- *             @OA\Property(property="phone", type="string"),
- *             @OA\Property(property="relationship", type="string"),
- *             @OA\Property(property="address", type="string")
- *         )
- *     ),
- *     @OA\Response(
- *         response=200,
- *         description="Kin Info Updated Successful",
- *         @OA\JsonContent(
- *             @OA\Property(property="code", type="integer", example=200),
- *             @OA\Property(property="success", type="boolean", example=true),
- *             @OA\Property(property="message", type="string", example="Kin Info Updated Successful")
- *         )
- *     )
- * )
- */
+   * @OA\Post(
+   *     path="/profile/update-kin-info",
+   *     summary="Update next of kin information",
+   *     tags={"Profile"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"name", "phone", "relationship", "address"},
+   *             @OA\Property(property="name", type="string"),
+   *             @OA\Property(property="phone", type="string"),
+   *             @OA\Property(property="relationship", type="string"),
+   *             @OA\Property(property="address", type="string")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Kin Info Updated Successful",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Kin Info Updated Successful")
+   *         )
+   *     )
+   * )
+   */
 
   // public function updateKinInfo(Request $request) {
   //   $this->validate($request, [
@@ -150,33 +297,33 @@ class ProfileController extends Controller
   // }
 
   /**
- * @OA\Post(
- *     path="/profile/update-bank-info",
- *     summary="Update bank account information",
- *     tags={"Profile"},
- *     security={{"bearerAuth":{}}},
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             required={"name", "acc_number", "sort_code", "is_account_in_your_name", "name_on_the_account"},
- *             @OA\Property(property="name", type="string"),
- *             @OA\Property(property="acc_number", type="string"),
- *             @OA\Property(property="sort_code", type="string"),
- *             @OA\Property(property="is_account_in_your_name", type="boolean"),
- *             @OA\Property(property="name_on_the_account", type="string")
- *         )
- *     ),
- *     @OA\Response(
- *         response=200,
- *         description="Bank Account Info Updated Successful",
- *         @OA\JsonContent(
- *             @OA\Property(property="code", type="integer", example=200),
- *             @OA\Property(property="success", type="boolean", example=true),
- *             @OA\Property(property="message", type="string", example="Bank Account Info Updated Successful")
- *         )
- *     )
- * )
- */
+   * @OA\Post(
+   *     path="/profile/update-bank-info",
+   *     summary="Update bank account information",
+   *     tags={"Profile"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"name", "acc_number", "sort_code", "is_account_in_your_name", "name_on_the_account"},
+   *             @OA\Property(property="name", type="string"),
+   *             @OA\Property(property="acc_number", type="string"),
+   *             @OA\Property(property="sort_code", type="string"),
+   *             @OA\Property(property="is_account_in_your_name", type="boolean"),
+   *             @OA\Property(property="name_on_the_account", type="string")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Bank Account Info Updated Successful",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Bank Account Info Updated Successful")
+   *         )
+   *     )
+   * )
+   */
 
   public function updateBankAccInfo(Request $request) {
     $this->validate($request, [
@@ -196,7 +343,7 @@ class ProfileController extends Controller
         'code' => 200,
         'success' => true,
         'message' => 'User Not Found',
-      ], 200);
+      ], 404);
     }
 
     if ($userData->admin_approval != "accepted" ) {
@@ -327,7 +474,7 @@ class ProfileController extends Controller
         'code' => 200,
         'success' => true,
         'message' => 'User Not Found',
-      ], 200);
+      ], 404);
     }
 
     if ($userData->admin_approval != "accepted" ) {

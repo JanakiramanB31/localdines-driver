@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnersLoginOtp;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -28,6 +29,7 @@ class AdminController extends Controller
     if ($deliveryPartner) {
 
       $deliveryPartner->admin_approval = "accepted";
+      $deliveryPartner->approved_at = Carbon::now('UTC');;
       $deliveryPartner->save();
 
       return response()->json([

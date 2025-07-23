@@ -39,7 +39,7 @@ $router->group(['middleware' => 'auth'], function () use ($router) {
   $router->get('/', 'HomeController@home');
 
   /* Fetching Assigned Order Route */
-  $router->post('/fetch-assigned-order', 'DeliveryController@fetchAssignedOrder');
+  $router->get('/fetch-assigned-order', 'DeliveryController@fetchAssignedOrder');
 
   /* Updating Order Status Route */
   $router->post('/update-order-status', 'DeliveryController@updateOrderStatus');
@@ -55,6 +55,15 @@ $router->group(['middleware' => 'auth'], function () use ($router) {
 
   /* Updating Duty Status */
   $router->post('/duty-status', 'DeliveryController@dutyStatusUpdate');
+
+  /* Retrieve Duty Status */
+  $router->get('/duty-status', 'ProfileController@getDutyStatus');
+
+  /* Retrieve Profile Info */
+  $router->get('/profile', 'ProfileController@getProfileInfo');
+
+  /* Check Account Status */
+  $router->get('/check-status', 'ProfileController@checkAccountStatus');
 
   /* Update Kin Info */
   //$router->post('/kin-info-update', 'ProfileController@updateKinInfo');
