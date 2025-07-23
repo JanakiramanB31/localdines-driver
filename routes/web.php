@@ -14,65 +14,94 @@ use Illuminate\Support\Facades\DB;
 |
 */
 
-/* New User Signup Route */
-$router->post('/signup', 'AuthController@signup');
+$router->group(['prefix' => 'api/v1'], function () use ($router) {
 
-/* Existing User Login Route */
-$router->post('/login', 'AuthController@login');
+  /* Auth Routes */
+  $router->group(['prefix' => 'auth'], function () use ($router) {
 
-/* Send OTP Route */
-$router->post('/send-otp', 'AuthController@sendOTP');
+    /* New User Signup Route */
+    $router->post('/signup', 'AuthController@signup');
 
-/* Verify OTP Route */
-$router->post('/verify-otp', 'AuthController@verifyOTP');
+    /* Existing User Login Route */
+    $router->post('/login', 'AuthController@login');
 
-/* Generating New Access Token for Valid Refresh Token Route */
-$router->post('/auth', 'AuthController@verifyRefreshToken');
+    /* Send OTP Route */
+    $router->post('/otp/send', 'AuthController@sendOTP');
 
-$router->post('/admin-approve', 'AdminController@approveUser');
-$router->post('/admin-reject', 'AdminController@rejectUser');
+    /* Verify OTP Route */
+    $router->post('/otp/verify', 'AuthController@verifyOTP');
 
+    /* Generating New Access Token for Valid Refresh Token Route */
+    $router->post('/refresh', 'AuthController@verifyRefreshToken');
 
-$router->group(['middleware' => 'auth'], function () use ($router) {
-  
-  /* Dashboard Route */
-  $router->get('/', 'HomeController@home');
+  });
 
-  /* Fetching Assigned Order Route */
-  $router->get('/fetch-assigned-order', 'DeliveryController@fetchAssignedOrder');
+  /* Admin Routes */
+  $router->group(['prefix' => 'admin'], function () use ($router) {
 
-  /* Updating Order Status Route */
-  $router->post('/update-order-status', 'DeliveryController@updateOrderStatus');
+    /* Approve an User */
+    $router->post('/approve', 'AdminController@approveUser');
 
-  /* Sending Delivery OTP Route */
-  $router->post('/send-delivery-otp', 'DeliveryController@sendDeliveryOTP');
+    /* Reject an User */
+    $router->post('/reject', 'AdminController@rejectUser');
+  });
 
-  /* Completing Delivery Route */
-  $router->post('/complete-order', 'DeliveryController@completeOrder');
+  $router->group(['middleware' => 'auth'], function () use ($router) {
+    
+    /* Dashboard Route */
+    $router->get('/', 'HomeController@home');
 
-  /* Fetching Order History */
-  $router->post('/order-history', 'DeliveryController@OrderHistory');
+    /* Order Routes */
+    $router->group(['prefix' => 'order'], function () use ($router) {
 
-  /* Updating Duty Status */
-  $router->post('/duty-status', 'DeliveryController@dutyStatusUpdate');
+      /* Fetching Assigned Order Route */
+      $router->get('/assigned', 'DeliveryController@fetchAssignedOrder');
 
-  /* Retrieve Duty Status */
-  $router->get('/duty-status', 'ProfileController@getDutyStatus');
+      /* Updating Order Status Route */
+      $router->put('/status', 'DeliveryController@updateOrderStatus');
 
-  /* Retrieve Profile Info */
-  $router->get('/profile', 'ProfileController@getProfileInfo');
+      /* Sending Delivery OTP Route */
+      $router->post('/otp/send', 'DeliveryController@sendDeliveryOTP');
 
-  /* Check Account Status */
-  $router->get('/check-acc-status', 'ProfileController@checkAccountStatus');
+      /* Completing Delivery Route */
+      $router->put('/complete', 'DeliveryController@completeOrder');
 
-  /* Update Kin Info */
-  //$router->post('/kin-info-update', 'ProfileController@updateKinInfo');
+      /* Fetching Order History */
+      $router->get('/history', 'DeliveryController@OrderHistory');
+    });
 
-  /* Update Bank Account Info */
-  $router->post('/bank-info-update', 'ProfileController@updateBankAccInfo');
+    /* Duty Routes */
+    $router->group(['prefix' => 'duty'], function () use ($router) {
 
-  /* pdation Additional Info */
-  $router->post('/profile-info-update', 'ProfileController@updateProfileInfo');
+      /* Updating Duty Status */
+      $router->put('/status', 'DeliveryController@dutyStatusUpdate');
+
+      /* Retrieve Duty Status */
+      $router->get('/status', 'ProfileController@getDutyStatus');
+
+    });
+
+    /* Profile Routes */
+    $router->group(['prefix' => 'profile'], function () use ($router) {
+
+      /* Retrieve Profile Info */
+      $router->get('/', 'ProfileController@getProfileInfo');
+
+      /* Check Account Status */
+      $router->get('/status', 'ProfileController@checkAccountStatus');
+
+      /* pdation Additional Info */
+      $router->put('/update', 'ProfileController@updateProfileInfo');
+
+      /* Update Bank Account Info */
+      $router->put('/update/bank', 'ProfileController@updateBankAccInfo');
+
+    });
+
+    /* Update Kin Info */
+    //$router->post('/kin-info-update', 'ProfileController@updateKinInfo');
+
+  });
 
 });
 
