@@ -75,7 +75,7 @@ class ProfileController extends Controller
     return response()->json([
       'code' => 200,
       'success' => true,
-      'message' => 'profile Info retrieved Successfully',
+      'message' => 'Profile Info retrieved Successfully',
       'data' => $data
     ], 200);
   }

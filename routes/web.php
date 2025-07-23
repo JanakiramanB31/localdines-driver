@@ -63,7 +63,7 @@ $router->group(['middleware' => 'auth'], function () use ($router) {
   $router->get('/profile', 'ProfileController@getProfileInfo');
 
   /* Check Account Status */
-  $router->get('/check-status', 'ProfileController@checkAccountStatus');
+  $router->get('/check-acc-status', 'ProfileController@checkAccountStatus');
 
   /* Update Kin Info */
   //$router->post('/kin-info-update', 'ProfileController@updateKinInfo');
