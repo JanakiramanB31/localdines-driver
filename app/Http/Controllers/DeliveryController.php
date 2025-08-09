@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerTakenOrder;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -110,7 +111,7 @@ class DeliveryController extends Controller
 
     $ordersData = FoodDeliveryPartnerTakenOrder::with([
     'order' => function($query) {
-      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
+      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_latitude', 'd_longitude', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
     },
     'order.order_items' => function($query) {
       $query->select('id', 'order_id', 'foreign_id', 'cnt', 'price');
@@ -147,6 +148,29 @@ class DeliveryController extends Controller
         return $item; 
       });
 
+      /* Handle latitude and longitude - convert address to sample data if coordinates are null */
+      $latitude = $order->d_latitude;
+      $longitude = $order->d_longitude;
+      $zipCode = $order->d_zip;
+      if (is_null($latitude) || is_null($longitude)) {
+        if ($zipCode !== null) {
+          /* Get coordinates from postcode API */
+          $locationCoordinates = $this->getCoordinatesFromZipCode($zipCode);
+          if ($locationCoordinates !== null) {
+            $latitude = $locationCoordinates['latitude'];
+            $longitude = $locationCoordinates['longitude'];
+            
+            // Update the orders table with the found coordinates
+            DB::table('food_delivery_orders')
+              ->where('id', $order->id)
+              ->update([
+                'd_latitude' => $latitude,
+                'd_longitude' => $longitude
+              ]);
+          }
+        }
+      }
+
       return [
         'id'            => $order->id,
         'order_id'      => $order->order_id,
@@ -156,6 +180,8 @@ class DeliveryController extends Controller
         'p_name'        => $pickupLocation['name'] ?? 'N/A',
         'p_address'     => $pickupLocation['address'] ?? 'N/A',
         'p_notes'       => $order->p_notes,
+        'd_latitude'    => $latitude,
+        'd_longitude'   => $longitude,
         'd_address_1'   => $order->d_address_1,
         'd_address_2'   => $order->d_address_2,
         'd_city'        => $order->d_city,
@@ -474,5 +500,48 @@ class DeliveryController extends Controller
       'message' => 'Order Fetched Successful',
       'data' => $updatedOrderData
     ], 200);
+  }
+
+  private function getCoordinatesFromZipCode($postcode)
+  {
+    try {
+      /* Clean and encode the postcode */
+      $cleanPostcode = trim(strtoupper($postcode));
+      $encodedPostcode = urlencode($cleanPostcode);
+      
+      /* API URL */
+      $url = "https://findthatpostcode.uk/postcodes/{$encodedPostcode}.json";
+      
+      /* Make HTTP request */
+      $context = stream_context_create([
+        'http' => [
+          'method' => 'GET',
+          'timeout' => 5,
+        ]
+      ]);
+      
+      $response = file_get_contents($url, false, $context);
+      
+      if ($response === false) {
+        return null;
+      }
+      
+      $data = json_decode($response, true);
+      
+      
+      /* Check if we have valid coordinate data */
+      if (isset($data['data']['attributes']['location']['lat']) && isset($data['data']['attributes']['location']['lon'])) {
+        return [
+          'latitude' => (float)$data['data']['attributes']['location']['lat'],
+          'longitude' => (float)$data['data']['attributes']['location']['lon'],
+        ];
+      }
+      
+    } catch (Exception $e) {
+      // Log error if needed, but continue with fallback
+      error_log("Postcode API error: " . $e->getMessage());
+    }
+    
+    return null;
   }
 }
