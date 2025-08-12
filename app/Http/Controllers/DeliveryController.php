@@ -121,13 +121,14 @@ class DeliveryController extends Controller
     //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->where('order_status', 'accepted')->get();
 
     $pickupLocation =  DB::table('food_delivery_plugin_base_multi_lang')->select('field', 'content')->where('model', 'pjLocation')->where('locale', 1)->pluck('content', 'field');
+    $pickupLocationCoOrdinates =  DB::table('food_delivery_locations')->select('lat', 'lng')->where('id', 1)->first();
 
-    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation) {
+    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation, $pickupLocationCoOrdinates) {
       
       $order = $order_data->order;
       
       // Map and enhance order_items
-      $order->order_items =  $order->order_items->map(function($item, $key) use ($productData) {
+      $order->order_items =  $order->order_items->map(function($item, $key) use ($productData, $pickupLocationCoOrdinates) {
         $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
         // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
         // $item['special_instruction'] = json_decode($item['special_instruction']);
@@ -179,6 +180,8 @@ class DeliveryController extends Controller
         'phone_no'      => $order->phone_no,
         'p_name'        => $pickupLocation['name'] ?? 'N/A',
         'p_address'     => $pickupLocation['address'] ?? 'N/A',
+        'p_latitude'    => $pickupLocationCoOrdinates->lat ?? 'N/A',
+        'p_longitude'   => $pickupLocationCoOrdinates->lng ?? 'N/A',
         'p_notes'       => $order->p_notes,
         'd_latitude'    => $latitude,
         'd_longitude'   => $longitude,
