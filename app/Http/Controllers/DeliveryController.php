@@ -445,6 +445,28 @@ class DeliveryController extends Controller
 
     $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation, $pickupLocationCoOrdinates) {
 
+      // Map and enhance order_items
+      $order_data->order->order_items =  $order_data->order->order_items->map(function($item, $key) use ($productData, $pickupLocationCoOrdinates) {
+        $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
+        // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
+        // $item['special_instruction'] = json_decode($item['special_instruction']);
+        // $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
+        $price = $item->price;
+        unset($item['price']);
+        $item['name'] = $productName;
+        $item['quantity'] = $item->cnt;
+        $item['price'] = $price;
+        // $item['description'] = $productDesc; 
+        unset(
+          $item['id'], 
+          $item['cnt'], 
+          $item['order_id'], 
+          $item['foreign_id']
+        );
+
+        return $item; 
+      });
+
       /* Handle latitude and longitude - convert address to sample data if coordinates are null */
       $latitude = $order_data->order->d_latitude;
       $longitude = $order_data->order->d_longitude;
@@ -467,8 +489,14 @@ class DeliveryController extends Controller
           }
         }
       }
+
+      // Add new properties to the existing object
+      $order_data->order->p_name = $pickupLocation['name'] ?? 'N/A';
+      $order_data->order->p_address = $pickupLocation['address'] ?? 'N/A';
+      $order_data->order->p_latitude = $pickupLocationCoOrdinates->lat ?? 'N/A';
+      $order_data->order->p_longitude = $pickupLocationCoOrdinates->lng ?? 'N/A';
       
-      $order_data->order = (object)[
+      $order_data->order = [
         'id'            => $order_data->order->id,
         'order_id'      => $order_data->order->order_id,
         'first_name'    => $order_data->order->first_name,
@@ -494,27 +522,6 @@ class DeliveryController extends Controller
         'order_items'   => $order_data->order->order_items,
       ];
 
-      // Map and enhance order_items
-      $order_data->order->order_items =  $order_data->order->order_items->map(function($item, $key) use ($productData, $pickupLocationCoOrdinates) {
-        $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
-        // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
-        // $item['special_instruction'] = json_decode($item['special_instruction']);
-        // $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
-        $price = $item->price;
-        unset($item['price']);
-        $item['name'] = $productName;
-        $item['quantity'] = $item->cnt;
-        $item['price'] = $price;
-        // $item['description'] = $productDesc; 
-        unset(
-          $item['id'], 
-          $item['cnt'], 
-          $item['order_id'], 
-          $item['foreign_id']
-        );
-
-        return $item; 
-      });
       return $order_data;
 
     });
