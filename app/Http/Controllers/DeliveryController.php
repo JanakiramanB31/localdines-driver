@@ -430,7 +430,7 @@ class DeliveryController extends Controller
 
     $ordersData = FoodDeliveryPartnerTakenOrder::with([
     'order' => function($query) {
-      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
+      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_latitude', 'd_longitude', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
     },
     'order.order_items' => function($query) {
       $query->select('id', 'order_id', 'foreign_id', 'cnt', 'price');
@@ -440,12 +440,62 @@ class DeliveryController extends Controller
 
     //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->get();
     $pickupLocation =  DB::table('food_delivery_plugin_base_multi_lang')->select('field', 'content')->where('model', 'pjLocation')->where('locale', 1)->pluck('content', 'field');
+    $pickupLocationCoOrdinates =  DB::table('food_delivery_locations')->select('lat', 'lng')->where('id', 1)->first();
+    
 
-    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation) {
-      $order = $order_data;
+    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation, $pickupLocationCoOrdinates) {
+
+      /* Handle latitude and longitude - convert address to sample data if coordinates are null */
+      $latitude = $order_data->order->d_latitude;
+      $longitude = $order_data->order->d_longitude;
+      $zipCode = $order_data->order->d_zip;
+      if (is_null($latitude) || is_null($longitude)) {
+        if ($zipCode !== null) {
+          /* Get coordinates from postcode API */
+          $locationCoordinates = $this->getCoordinatesFromZipCode($zipCode);
+          if ($locationCoordinates !== null) {
+            $latitude = $locationCoordinates['latitude'];
+            $longitude = $locationCoordinates['longitude'];
+            
+            // Update the orders table with the found coordinates
+            DB::table('food_delivery_orders')
+              ->where('id', $order_data->order->id)
+              ->update([
+                'd_latitude' => $latitude,
+                'd_longitude' => $longitude
+              ]);
+          }
+        }
+      }
+      
+      $order_data->order = (object)[
+        'id'            => $order_data->order->id,
+        'order_id'      => $order_data->order->order_id,
+        'first_name'    => $order_data->order->first_name,
+        'surname'       => $order_data->order->surname,
+        'phone_no'      => $order_data->order->phone_no,
+        'p_name'        => $pickupLocation['name'] ?? 'N/A',
+        'p_address'     => $pickupLocation['address'] ?? 'N/A',
+        'p_latitude'    => $pickupLocationCoOrdinates->lat ?? 'N/A',
+        'p_longitude'   => $pickupLocationCoOrdinates->lng ?? 'N/A',
+        'p_notes'       => $order_data->order->p_notes,
+        'd_latitude'    => $latitude,
+        'd_longitude'   => $longitude,
+        'd_address_1'   => $order_data->order->d_address_1,
+        'd_address_2'   => $order_data->order->d_address_2,
+        'd_city'        => $order_data->order->d_city,
+        'd_state'       => $order_data->order->d_state,
+        'd_zip'         => $order_data->order->d_zip,
+        'd_notes'       => $order_data->order->d_notes,
+        'post_code'     => $order_data->order->post_code,
+        'subtotal'      => $order_data->order->subtotal,
+        'total'         => $order_data->order->total,
+        'customer_paid' => $order_data->order->customer_paid,
+        'order_items'   => $order_data->order->order_items,
+      ];
 
       // Map and enhance order_items
-      $order->order->order_items =  $order->order->order_items->map(function($item, $key) use ($productData) {
+      $order_data->order->order_items =  $order_data->order->order_items->map(function($item, $key) use ($productData, $pickupLocationCoOrdinates) {
         $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
         // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
         // $item['special_instruction'] = json_decode($item['special_instruction']);
@@ -465,28 +515,8 @@ class DeliveryController extends Controller
 
         return $item; 
       });
-      return $order;
-      // return [
-      //   'id'            => $order->id,
-      //   'order_id'      => $order->order_id,
-      //   'first_name'    => $order->first_name,
-      //   'surname'       => $order->surname,
-      //   'phone_no'      => $order->phone_no,
-      //   'p_name'        => $pickupLocation['name'] ?? 'N/A',
-      //   'p_address'     => $pickupLocation['address'] ?? 'N/A',
-      //   'p_notes'       => $order->p_notes,
-      //   'd_address_1'   => $order->d_address_1,
-      //   'd_address_2'   => $order->d_address_2,
-      //   'd_city'        => $order->d_city,
-      //   'd_state'       => $order->d_state,
-      //   'd_zip'         => $order->d_zip,
-      //   'd_notes'       => $order->d_notes,
-      //   'post_code'     => $order->post_code,
-      //   'subtotal'      => $order->subtotal,
-      //   'total'         => $order->total,
-      //   'customer_paid' => $order->customer_paid,
-      //   'order_items'   => $order->order_items,
-      // ];
+      return $order_data;
+
     });
 
     if(count($updatedOrderData) == 0) {
@@ -501,7 +531,7 @@ class DeliveryController extends Controller
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $updatedOrderData
+      'data' => $updatedOrderData->toArray()
     ], 200);
   }
 
