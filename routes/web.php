@@ -47,6 +47,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
 
   });
   
+  /* Send Order Notification to Online Partners - No Auth Required */
+  $router->get('/order/send-notification', 'DeliveryController@sendOrderNotification');
+
   $router->group(['middleware' => 'auth'], function () use ($router) {
     
     /* Dashboard Route */
@@ -54,9 +57,6 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     
     /* Order Routes */
     $router->group(['prefix' => 'order'], function () use ($router) {
-      /* Send Order Notification to Online Partners */
-      $router->get('/send-notification', 'DeliveryController@sendOrderNotification');
-
       /* Fetching Assigned Order Route */
       $router->get('/assigned', 'DeliveryController@fetchAssignedOrder');
 
