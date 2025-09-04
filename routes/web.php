@@ -44,15 +44,18 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
 
     /* Reject an User */
     $router->post('/reject', 'AdminController@rejectUser');
-  });
 
+  });
+  
   $router->group(['middleware' => 'auth'], function () use ($router) {
     
     /* Dashboard Route */
     $router->get('/dashboard', 'HomeController@home');
-
+    
     /* Order Routes */
     $router->group(['prefix' => 'order'], function () use ($router) {
+      /* Send Order Notification to Online Partners */
+      $router->get('/send-notification', 'DeliveryController@sendOrderNotification');
 
       /* Fetching Assigned Order Route */
       $router->get('/assigned', 'DeliveryController@fetchAssignedOrder');
@@ -68,10 +71,16 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
 
       /* Fetching Order History */
       $router->get('/history', 'DeliveryController@OrderHistory');
+
+      /* Accept Order Route */
+      $router->post('/accept', 'DeliveryController@acceptOrder');
     });
 
+    
     /* Duty Routes */
     $router->group(['prefix' => 'duty'], function () use ($router) {
+      /* FCM Token Route */
+      $router->post('/update-fcm-token', 'DeliveryController@updateFcmToken');
 
       /* Updating Duty Status */
       $router->put('/status', 'DeliveryController@dutyStatusUpdate');

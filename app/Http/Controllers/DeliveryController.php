@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FoodDeliveryOrder;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerTakenOrder;
 use Carbon\Carbon;
@@ -583,5 +584,453 @@ class DeliveryController extends Controller
     }
     
     return null;
+  }
+
+  /**
+   * @OA\Post(
+   *     path="/accept-order",
+   *     summary="Accept an order assignment (first partner to accept gets the order)",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"order_id"},
+   *             @OA\Property(property="order_id", type="integer", example=123)
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Order accepted successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order accepted successfully"),
+   *             @OA\Property(property="data", type="object",
+   *                 @OA\Property(property="order_id", type="integer", example=123),
+   *                 @OA\Property(property="assigned_at", type="string", example="2023-12-01T10:30:00Z")
+   *             )
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=409,
+   *         description="Order already accepted by another partner",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=409),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Order already accepted by another partner")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="Order not found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Order not found")
+   *         )
+   *     )
+   * )
+   */
+  public function acceptOrder(Request $request) {
+    $this->validate($request, [
+      'order_id' => 'required|integer'
+    ]);
+
+    $userId = $request->auth->sub;
+    $orderId = $request->order_id;
+
+    // Check if user exists
+    $partner = FoodDeliveryPartner::find($userId);
+    if (!$partner) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    // Check if order exists
+    $order = DB::table('food_delivery_orders')->where('id', $orderId)->first();
+    if (!$order) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found',
+      ], 404);
+    }
+
+    // Check if order is already accepted by someone
+    $existingAssignment = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
+                                                      ->where('order_status', 'accepted')
+                                                      ->first();
+
+    if ($existingAssignment) {
+      return response()->json([
+        'code' => 409,
+        'success' => false,
+        'message' => 'Order already accepted by another partner',
+        'data' => [
+          'accepted_by_partner_id' => $existingAssignment->user_id,
+          'accepted_at' => $existingAssignment->created_at
+        ]
+      ], 409);
+    }
+
+    // Check if this partner already has this order assigned
+    $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+                                                 ->where('order_id', $orderId)
+                                                 ->first();
+
+    if ($partnerOrder) {
+      if ($partnerOrder->order_status == 'accepted') {
+        return response()->json([
+          'code' => 200,
+          'success' => true,
+          'message' => 'Order already accepted by you',
+          'data' => [
+            'order_id' => $orderId,
+            'assigned_at' => $partnerOrder->created_at
+          ]
+        ], 200);
+      } else {
+        // Update existing record
+        $partnerOrder->order_status = 'accepted';
+        $partnerOrder->updated_at = Carbon::now();
+        $partnerOrder->save();
+      }
+    } else {
+      // Create new assignment
+      $partnerOrder = new FoodDeliveryPartnerTakenOrder();
+      $partnerOrder->user_id = $userId;
+      $partnerOrder->order_id = $orderId;
+      $partnerOrder->order_status = 'accepted';
+      $partnerOrder->created_at = Carbon::now();
+      $partnerOrder->updated_at = Carbon::now();
+      $partnerOrder->save();
+    }
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Order accepted successfully',
+      'data' => [
+        'order_id' => $orderId,
+        'partner_id' => $userId,
+        'partner_name' => $partner->name,
+        'assigned_at' => $partnerOrder->updated_at,
+        'order_details' => [
+          'order_id' => $order->order_id,
+          'total' => $order->total,
+          'customer_name' => $order->first_name . ' ' . $order->surname,
+          'delivery_address' => $order->d_address_1 . ', ' . $order->d_city
+        ]
+      ]
+    ], 200);
+  }
+
+  /**
+   * @OA\Post(
+   *     path="/update-fcm-token",
+   *     summary="Update delivery partner's FCM token for push notifications",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"fcm_token"},
+   *             @OA\Property(property="fcm_token", type="string", example="dGVzdF90b2tlbl9oZXJl")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="FCM token updated successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="FCM token updated successfully")
+   *         )
+   *     )
+   * )
+   */
+  public function updateFcmToken(Request $request) {
+    $this->validate($request, [
+      'fcm_token' => 'required|string'
+    ]);
+
+    $userId = $request->auth->sub;
+    $userData = FoodDeliveryPartner::find($userId);
+
+    if(!$userData) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    $userData->fcm_token = $request->fcm_token;
+    $userData->save();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'FCM token updated successfully',
+    ], 200);
+  }
+
+    /**
+   * @OA\Get(
+   *     path="/send-order-notification",
+   *     summary="Send new order notification to all online delivery partners",
+   *     tags={"Admin"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\Parameter(
+   *         name="order_id",
+   *         in="query",
+   *         required=true,
+   *         description="The ID of the order to send notification for",
+   *         @OA\Schema(type="integer", example=123)
+   *     ),
+   *     @OA\Parameter(
+   *         name="message",
+   *         in="query",
+   *         required=false,
+   *         description="Custom message for the notification (optional)",
+   *         @OA\Schema(type="string", example="New order available for pickup")
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Notification sent successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Notification sent to X online partners"),
+   *             @OA\Property(property="data", type="object",
+   *                 @OA\Property(property="partners_notified", type="integer", example=5),
+   *                 @OA\Property(property="order_id", type="integer", example=123)
+   *             )
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=400,
+   *         description="Invalid or missing order ID",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=400),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Valid order_id is required in query parameters")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="No online partners found or order not found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="No online delivery partners found")
+   *         )
+   *     )
+   * )
+   */
+  public function sendOrderNotification(Request $request) {
+    // Get order_id from query parameter
+    $order_id = $request->query('order_id');
+    
+    // Validate that order_id is provided and numeric
+    if (!$order_id || !is_numeric($order_id)) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Valid order_id is required in query parameters'
+      ], 400);
+    }
+    
+    $order_id = (int) $order_id;
+    
+    // Use default message or get from query parameter
+    $message = $request->query('message', 'New order available for pickup');
+
+    // Get order details with pickup and delivery information
+    $orderData = $this->getOrderDetails($order_id);
+    
+    if (!$orderData) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found'
+      ], 404);
+    }
+
+    $onlinePartners = FoodDeliveryPartner::where('duty_status', true)
+                                        ->where('admin_approval', 'accepted')
+                                        ->whereNotNull('fcm_token')
+                                        ->get();
+
+    if ($onlinePartners->isEmpty()) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'No online delivery partners found'
+      ], 404);
+    }
+
+    $partnersNotified = 0;
+    $failedNotifications = 0;
+    $notificationResults = [];
+    
+    foreach ($onlinePartners as $partner) {
+      $result = $this->sendPushNotification($partner, $order_id, $message, $orderData);
+      
+      if ($result['success']) {
+        $partnersNotified++;
+      } else {
+        $failedNotifications++;
+      }
+      
+      $notificationResults[] = [
+        'partner_id' => $partner->id,
+        'partner_name' => $partner->name,
+        'status' => $result['success'] ? 'sent' : 'failed',
+        'error' => $result['error'] ?? null
+      ];
+    }
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed",
+      'data' => [
+        'partners_notified' => $partnersNotified,
+        'failed_notifications' => $failedNotifications,
+        'order_id' => $order_id,
+        'order_details' => $orderData,
+        'notification_results' => $notificationResults
+      ]
+    ], 200);
+  }
+
+  private function getOrderDetails($orderId) {
+    try {
+      // Get order details
+      $order = FoodDeliveryOrder::with('order_items')->find($orderId);
+      
+      if (!$order) {
+        return null;
+      }
+
+      // Get pickup location details
+      $pickupLocation = DB::table('food_delivery_plugin_base_multi_lang')
+        ->select('field', 'content')
+        ->where('model', 'pjLocation')
+        ->where('locale', 1)
+        ->pluck('content', 'field');
+
+      $pickupCoordinates = DB::table('food_delivery_locations')
+        ->select('lat', 'lng')
+        ->where('id', 1)
+        ->first();
+
+      // Calculate total items
+      $totalItems = $order->order_items->sum('cnt');
+
+      return [
+        'order_id' => $order->order_id,
+        'total_amount' => $order->total,
+        'total_items' => $totalItems,
+        'customer_name' => $order->first_name . ' ' . $order->surname,
+        'customer_phone' => $order->phone_no,
+        'pickup_location' => [
+          'name' => $pickupLocation['name'] ?? 'Restaurant',
+          'address' => $pickupLocation['address'] ?? 'N/A',
+          'latitude' => $pickupCoordinates->lat ?? null,
+          'longitude' => $pickupCoordinates->lng ?? null
+        ],
+        'delivery_location' => [
+          'address' => $order->d_address_1 . ', ' . $order->d_city . ', ' . $order->d_state,
+          'postcode' => $order->d_zip,
+          'latitude' => $order->d_latitude,
+          'longitude' => $order->d_longitude,
+          'notes' => $order->d_notes
+        ]
+      ];
+
+    } catch (Exception $e) {
+      return null;
+    }
+  }
+
+  private function sendPushNotification($partner, $orderId, $message, $orderData = null) {
+    try {
+      $fcmToken = $partner->fcm_token;
+      
+      if (!$fcmToken) {
+        return ['success' => false, 'error' => 'No FCM token found'];
+      }
+
+      $serverKey = env('FCM_SERVER_KEY');
+      if (!$serverKey) {
+        return ['success' => false, 'error' => 'FCM server key not configured'];
+      }
+
+      // Enhanced notification body with order info
+      $notificationBody = $message;
+      if ($orderData) {
+        $notificationBody = "Order #{$orderData['order_id']} - £{$orderData['total_amount']} - {$orderData['total_items']} items";
+      }
+
+      $notificationData = [
+        'to' => $fcmToken,
+        'notification' => [
+          'title' => 'New Order Available!',
+          'body' => $notificationBody,
+          'icon' => 'ic_notification',
+          'sound' => 'default',
+          'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+        ],
+        'data' => [
+          'order_id' => (string) $orderId,
+          'type' => 'new_order',
+          'timestamp' => Carbon::now()->toISOString(),
+          'order_details' => json_encode($orderData)
+        ]
+      ];
+
+      $headers = [
+        'Authorization: key=' . $serverKey,
+        'Content-Type: application/json'
+      ];
+
+      $ch = curl_init();
+      curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($notificationData));
+      curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+      $response = curl_exec($ch);
+      $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      
+      if (curl_error($ch)) {
+        curl_close($ch);
+        return ['success' => false, 'error' => 'cURL error: ' . curl_error($ch)];
+      }
+      
+      curl_close($ch);
+
+      if ($httpCode === 200) {
+        $responseData = json_decode($response, true);
+        if (isset($responseData['success']) && $responseData['success'] > 0) {
+          return ['success' => true];
+        } else {
+          return ['success' => false, 'error' => 'FCM response indicates failure'];
+        }
+      } else {
+        return ['success' => false, 'error' => "HTTP error: {$httpCode}"];
+      }
+
+    } catch (Exception $e) {
+      return ['success' => false, 'error' => 'Exception: ' . $e->getMessage()];
+    }
   }
 }

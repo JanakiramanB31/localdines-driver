@@ -21,7 +21,8 @@ class FoodDeliveryPartner extends Model
     'vehicle_name',
     'vehicle_number',
     'national_id',
-    'address'
+    'address',
+    'fcm_token'
   ];
 
   /**
