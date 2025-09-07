@@ -60,6 +60,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       /* Fetching Assigned Order Route */
       $router->get('/assigned', 'DeliveryController@fetchAssignedOrder');
 
+      /* Fetching Order Details Route */
+      $router->post('/details', 'DeliveryController@getOrderDetails');
+
       /* Updating Order Status Route */
       $router->put('/status', 'DeliveryController@updateOrderStatus');
 
@@ -74,6 +77,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
 
       /* Accept Order Route */
       $router->post('/accept', 'DeliveryController@acceptOrder');
+
+      /* Reject Order Route */
+      $router->post('/reject', 'DeliveryController@rejectOrder');
     });
 
     

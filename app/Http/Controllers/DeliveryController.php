@@ -99,108 +99,10 @@ class DeliveryController extends Controller
   public function fetchAssignedOrder(Request $request) {
     $userId = $request->auth->sub;
 
-    $productData = Cache::remember('product_data', Carbon::now()->addDay(), function() {
-      return DB::table('food_delivery_plugin_base_multi_lang')
-      ->where('model', 'pjProduct')->select('foreign_id', 'field', 'content')->get()
-      ->groupBy('foreign_id')
-      ->map(fn($items, $foreignId) => array_merge(
-          ['foreign_id' => $foreignId],
-          $items->pluck('content', 'field')->toArray()
-      ))
-      ->values();
-    });
+    $assignedOrders = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+    ->where('order_status', 'accepted')->get();
 
-    $ordersData = FoodDeliveryPartnerTakenOrder::with([
-    'order' => function($query) {
-      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_latitude', 'd_longitude', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
-    },
-    'order.order_items' => function($query) {
-      $query->select('id', 'order_id', 'foreign_id', 'cnt', 'price');
-    },
-    ])->where('user_id', $userId)->where('order_status', 'accepted')->get();
-
-    //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->where('order_status', 'accepted')->get();
-
-    $pickupLocation =  DB::table('food_delivery_plugin_base_multi_lang')->select('field', 'content')->where('model', 'pjLocation')->where('locale', 1)->pluck('content', 'field');
-    $pickupLocationCoOrdinates =  DB::table('food_delivery_locations')->select('lat', 'lng')->where('id', 1)->first();
-
-    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation, $pickupLocationCoOrdinates) {
-      
-      $order = $order_data->order;
-      
-      // Map and enhance order_items
-      $order->order_items =  $order->order_items->map(function($item, $key) use ($productData, $pickupLocationCoOrdinates) {
-        $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
-        // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
-        // $item['special_instruction'] = json_decode($item['special_instruction']);
-        // $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
-        $price = $item->price;
-        unset($item['price']);
-        $item['name'] = $productName;
-        $item['quantity'] = $item->cnt;
-        $item['price'] = $price;
-        // $item['description'] = $productDesc;
-        unset(
-          $item['id'], 
-          $item['cnt'], 
-          $item['order_id'], 
-          $item['foreign_id']
-        );
-
-        return $item; 
-      });
-
-      /* Handle latitude and longitude - convert address to sample data if coordinates are null */
-      $latitude = $order->d_latitude;
-      $longitude = $order->d_longitude;
-      $zipCode = $order->d_zip;
-      if (is_null($latitude) || is_null($longitude)) {
-        if ($zipCode !== null) {
-          /* Get coordinates from postcode API */
-          $locationCoordinates = $this->getCoordinatesFromZipCode($zipCode);
-          if ($locationCoordinates !== null) {
-            $latitude = $locationCoordinates['latitude'];
-            $longitude = $locationCoordinates['longitude'];
-            
-            // Update the orders table with the found coordinates
-            DB::table('food_delivery_orders')
-              ->where('id', $order->id)
-              ->update([
-                'd_latitude' => $latitude,
-                'd_longitude' => $longitude
-              ]);
-          }
-        }
-      }
-
-      return [
-        'id'            => $order->id,
-        'order_id'      => $order->order_id,
-        'first_name'    => $order->first_name,
-        'surname'       => $order->surname,
-        'phone_no'      => $order->phone_no,
-        'p_name'        => $pickupLocation['name'] ?? 'N/A',
-        'p_address'     => $pickupLocation['address'] ?? 'N/A',
-        'p_latitude'    => $pickupLocationCoOrdinates->lat ?? 'N/A',
-        'p_longitude'   => $pickupLocationCoOrdinates->lng ?? 'N/A',
-        'p_notes'       => $order->p_notes,
-        'd_latitude'    => $latitude,
-        'd_longitude'   => $longitude,
-        'd_address_1'   => $order->d_address_1,
-        'd_address_2'   => $order->d_address_2,
-        'd_city'        => $order->d_city,
-        'd_state'       => $order->d_state,
-        'd_zip'         => $order->d_zip,
-        'd_notes'       => $order->d_notes,
-        'post_code'     => $order->post_code,
-        'subtotal'      => $order->subtotal,
-        'total'         => $order->total,
-        'customer_paid' => $order->customer_paid,
-        'order_items'   => $order->order_items,
-      ];
-    });
-
-    if(count($updatedOrderData) == 0) {
+    if($assignedOrders->isEmpty()) {
       return response()->json([
         'code' => 200,
         'success' => true,
@@ -208,11 +110,19 @@ class DeliveryController extends Controller
       ], 200);
     }
 
+    $updatedOrderData = $assignedOrders->map(function($assignedOrder) {
+      $orderData = $this->getOrderDetailsForNotification($assignedOrder->order_id, false, 'accepted');
+      if ($orderData) {
+        $orderData['order_status'] = $assignedOrder->order_status;
+      }
+      return $orderData;
+    })->filter(); // Remove null values
+
     return response()->json([
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $updatedOrderData
+      'data' => $updatedOrderData->values()
     ], 200);
   }
 
@@ -418,116 +328,10 @@ class DeliveryController extends Controller
   public function orderHistory(Request $request) {
     $userId = $request->auth->sub;
 
-    $productData = Cache::remember('product_data', Carbon::now()->addDay(), function() {
-      return DB::table('food_delivery_plugin_base_multi_lang')
-      ->where('model', 'pjProduct')->select('foreign_id', 'field', 'content')->get()
-      ->groupBy('foreign_id')
-      ->map(fn($items, $foreignId) => array_merge(
-          ['foreign_id' => $foreignId],
-          $items->pluck('content', 'field')->toArray()
-      ))
-      ->values();
-    });
+    $orderHistory = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
 
-    $ordersData = FoodDeliveryPartnerTakenOrder::with([
-    'order' => function($query) {
-      $query->select('id', 'order_id', 'first_name', 'surname', 'phone_no', 'p_notes', 'd_latitude', 'd_longitude', 'd_address_1', 'd_address_2', 'd_city', 'd_state', 'd_zip', 'd_notes', 'post_code', 'subtotal', 'total', 'customer_paid');
-    },
-    'order.order_items' => function($query) {
-      $query->select('id', 'order_id', 'foreign_id', 'cnt', 'price');
-    },
-    ])->where('user_id', $userId)->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
-
-
-    //$ordersData = FoodDeliveryPartnerTakenOrder::with('order')->where('user_id', $userId)->get();
-    $pickupLocation =  DB::table('food_delivery_plugin_base_multi_lang')->select('field', 'content')->where('model', 'pjLocation')->where('locale', 1)->pluck('content', 'field');
-    $pickupLocationCoOrdinates =  DB::table('food_delivery_locations')->select('lat', 'lng')->where('id', 1)->first();
-    
-
-    $updatedOrderData = $ordersData->map(function($order_data, $key) use ($productData, $pickupLocation, $pickupLocationCoOrdinates) {
-
-      // Map and enhance order_items
-      $order_data->order->order_items =  $order_data->order->order_items->map(function($item, $key) use ($productData, $pickupLocationCoOrdinates) {
-        $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
-        // $productDesc = $productData->firstWhere('foreign_id', $item->foreign_id)['description'] ?? 'N/A';
-        // $item['special_instruction'] = json_decode($item['special_instruction']);
-        // $item['custom_special_instruction'] = json_decode($item['custom_special_instruction']);
-        $price = $item->price;
-        unset($item['price']);
-        $item['name'] = $productName;
-        $item['quantity'] = $item->cnt;
-        $item['price'] = $price;
-        // $item['description'] = $productDesc; 
-        unset(
-          $item['id'], 
-          $item['cnt'], 
-          $item['order_id'], 
-          $item['foreign_id']
-        );
-
-        return $item; 
-      });
-
-      /* Handle latitude and longitude - convert address to sample data if coordinates are null */
-      $latitude = $order_data->order->d_latitude;
-      $longitude = $order_data->order->d_longitude;
-      $zipCode = $order_data->order->d_zip;
-      if (is_null($latitude) || is_null($longitude)) {
-        if ($zipCode !== null) {
-          /* Get coordinates from postcode API */
-          $locationCoordinates = $this->getCoordinatesFromZipCode($zipCode);
-          if ($locationCoordinates !== null) {
-            $latitude = $locationCoordinates['latitude'];
-            $longitude = $locationCoordinates['longitude'];
-            
-            // Update the orders table with the found coordinates
-            DB::table('food_delivery_orders')
-              ->where('id', $order_data->order->id)
-              ->update([
-                'd_latitude' => $latitude,
-                'd_longitude' => $longitude
-              ]);
-          }
-        }
-      }
-
-      // Add new properties to the existing object
-      $order_data->order->p_name = $pickupLocation['name'] ?? 'N/A';
-      $order_data->order->p_address = $pickupLocation['address'] ?? 'N/A';
-      $order_data->order->p_latitude = $pickupLocationCoOrdinates->lat ?? 'N/A';
-      $order_data->order->p_longitude = $pickupLocationCoOrdinates->lng ?? 'N/A';
-      
-      $order_data->order = [
-        'id'            => $order_data->order->id,
-        'order_id'      => $order_data->order->order_id,
-        'first_name'    => $order_data->order->first_name,
-        'surname'       => $order_data->order->surname,
-        'phone_no'      => $order_data->order->phone_no,
-        'p_name'        => $pickupLocation['name'] ?? 'N/A',
-        'p_address'     => $pickupLocation['address'] ?? 'N/A',
-        'p_latitude'    => $pickupLocationCoOrdinates->lat ?? 'N/A',
-        'p_longitude'   => $pickupLocationCoOrdinates->lng ?? 'N/A',
-        'p_notes'       => $order_data->order->p_notes,
-        'd_latitude'    => $latitude,
-        'd_longitude'   => $longitude,
-        'd_address_1'   => $order_data->order->d_address_1,
-        'd_address_2'   => $order_data->order->d_address_2,
-        'd_city'        => $order_data->order->d_city,
-        'd_state'       => $order_data->order->d_state,
-        'd_zip'         => $order_data->order->d_zip,
-        'd_notes'       => $order_data->order->d_notes,
-        'post_code'     => $order_data->order->post_code,
-        'subtotal'      => $order_data->order->subtotal,
-        'total'         => $order_data->order->total,
-        'customer_paid' => $order_data->order->customer_paid,
-        'order_items'   => $order_data->order->order_items,
-      ];
-
-      return $order_data;
-
-    });
-
-    if(count($updatedOrderData) == 0) {
+    if($orderHistory->isEmpty()) {
       return response()->json([
         'code' => 200,
         'success' => true,
@@ -535,11 +339,27 @@ class DeliveryController extends Controller
       ], 200);
     }
 
+    $updatedOrderData = $orderHistory->map(function($historyOrder) {
+      $orderData = $this->getOrderDetailsForNotification($historyOrder->order_id, true);
+      if ($orderData) {
+        // Format to match existing orderHistory structure
+        return [
+          'id' => $historyOrder->id,
+          'order_id' => $historyOrder->order_id,
+          'order_status' => $historyOrder->order_status,
+          'user_id' => $historyOrder->user_id,
+          'd_at' => $historyOrder->d_at,
+          'order' => $orderData
+        ];
+      }
+      return null;
+    })->filter(); // Remove null values
+
     return response()->json([
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $updatedOrderData->toArray()
+      'data' => $updatedOrderData->values()
     ], 200);
   }
 
@@ -584,6 +404,77 @@ class DeliveryController extends Controller
     }
     
     return null;
+  }
+
+  /**
+   * @OA\Post(
+   *     path="/order-details",
+   *     summary="Fetch detailed information about a specific order",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"order_id"},
+   *             @OA\Property(property="order_id", type="integer", example=123),
+   *             @OA\Property(property="user_details", type="boolean", example=true, description="Include assigned partner details")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Order details fetched successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order details fetched successfully"),
+   *             @OA\Property(property="data", type="object")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="Order not found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Order not found")
+   *         )
+   *     )
+   * )
+   */
+  public function getOrderDetails(Request $request) {
+    $this->validate($request, [
+      'order_id' => 'required|integer',
+    ]);
+
+    $userId = $request->auth->sub;
+    $orderId = $request->order_id;
+
+    // Check if user exists
+    $partner = FoodDeliveryPartner::find($userId);
+    if (!$partner) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+        
+    $orderData = $this->getOrderDetailsForNotification($orderId, true);
+    
+    if (!$orderData) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found',
+      ], 404);
+    }
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Order details fetched successfully',
+      'data' => $orderData
+    ], 200);
   }
 
   /**
@@ -662,25 +553,19 @@ class DeliveryController extends Controller
 
     // Check if order is already accepted by someone
     $existingAssignment = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
-                                                      ->where('order_status', 'accepted')
-                                                      ->first();
+    ->where('order_status', 'accepted')->first();
 
     if ($existingAssignment) {
       return response()->json([
         'code' => 409,
         'success' => false,
         'message' => 'Order already accepted by another partner',
-        'data' => [
-          'accepted_by_partner_id' => $existingAssignment->user_id,
-          'accepted_at' => $existingAssignment->created_at
-        ]
       ], 409);
     }
 
     // Check if this partner already has this order assigned
     $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
-                                                 ->where('order_id', $orderId)
-                                                 ->first();
+    ->where('order_id', $orderId)->first();
 
     if ($partnerOrder) {
       if ($partnerOrder->order_status == 'accepted') {
@@ -716,16 +601,113 @@ class DeliveryController extends Controller
       'message' => 'Order accepted successfully',
       'data' => [
         'order_id' => $orderId,
-        'partner_id' => $userId,
-        'partner_name' => $partner->name,
-        'assigned_at' => $partnerOrder->updated_at,
-        'order_details' => [
-          'order_id' => $order->order_id,
-          'total' => $order->total,
-          'customer_name' => $order->first_name . ' ' . $order->surname,
-          'delivery_address' => $order->d_address_1 . ', ' . $order->d_city
-        ]
       ]
+    ], 200);
+  }
+
+  /**
+   * @OA\Post(
+   *     path="/reject-order",
+   *     summary="Reject an order assignment",
+   *     tags={"Delivery"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             required={"order_id"},
+   *             @OA\Property(property="order_id", type="integer", example=123),
+   *             @OA\Property(property="reason", type="string", example="Unable to deliver at this time")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Order rejected successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order rejected successfully"),
+   *             @OA\Property(property="data", type="object",
+   *                 @OA\Property(property="order_id", type="integer", example=123),
+   *                 @OA\Property(property="rejected_at", type="string", example="2023-12-01T10:30:00Z")
+   *             )
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="Order not found or not assigned to this partner",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Order not found or not assigned to you")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=400,
+   *         description="Order cannot be rejected in current status",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=400),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Order cannot be rejected as it's already in progress")
+   *         )
+   *     )
+   * )
+   */
+  public function rejectOrder(Request $request) {
+    $this->validate($request, [
+      'order_id' => 'required|integer',
+    ]);
+
+    $userId = $request->auth->sub;
+    $orderId = $request->order_id;
+
+    $partner = FoodDeliveryPartner::find($userId);
+    if (!$partner) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+    ->where('order_id', $orderId)->first();
+
+    if (!$partnerOrder) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found or not assigned to you',
+      ], 404);
+    }
+
+    if ($partnerOrder->order_status == 'collected' || $partnerOrder->order_status == 'delivered') {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Order cannot be rejected as it\'s already in progress',
+      ], 400);
+    }
+
+    if ($partnerOrder->order_status == 'rejected') {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'Order already rejected by you',
+        'data' => [
+          'order_id' => $orderId,
+          'rejected_at' => $partnerOrder->updated_at
+        ]
+      ], 200);
+    }
+
+    $partnerOrder->order_status = 'rejected';
+    $partnerOrder->updated_at = Carbon::now();
+    $partnerOrder->save();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Order rejected successfully'
     ], 200);
   }
 
@@ -851,7 +833,7 @@ class DeliveryController extends Controller
     $message = $request->query('message', 'New order available for pickup');
 
     // Get order details with pickup and delivery information
-    $orderData = $this->getOrderDetails($order_id);
+    $orderData = $this->getOrderDetailsForNotification($order_id);
     
     if (!$orderData) {
       return response()->json([
@@ -861,16 +843,24 @@ class DeliveryController extends Controller
       ], 404);
     }
 
+    // Get partners who have previously rejected this order
+    $rejectedPartnerIds = FoodDeliveryPartnerTakenOrder::where('order_id', $order_id)
+    ->where('order_status', 'rejected')->pluck('user_id')->toArray();
+
     $onlinePartners = FoodDeliveryPartner::where('duty_status', true)
-                                        ->where('admin_approval', 'accepted')
-                                        ->whereNotNull('fcm_token')
-                                        ->get();
+    ->where('admin_approval', 'accepted')->whereNotNull('fcm_token')
+    ->whereNotIn('id', $rejectedPartnerIds)->get();
 
     if ($onlinePartners->isEmpty()) {
+      $totalRejected = count($rejectedPartnerIds);
+      $message = $totalRejected > 0 
+        ? "No available delivery partners found (excluding {$totalRejected} partners who previously rejected this order)"
+        : 'No online delivery partners found';
+      
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'No online delivery partners found'
+        'message' => $message
       ], 404);
     }
 
@@ -895,13 +885,19 @@ class DeliveryController extends Controller
       ];
     }
 
+    $totalRejected = count($rejectedPartnerIds);
+    $message = $totalRejected > 0 
+      ? "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed (excluding {$totalRejected} partners who previously rejected this order)"
+      : "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed";
+
     return response()->json([
       'code' => 200,
       'success' => true,
-      'message' => "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed",
+      'message' => $message,
       'data' => [
         'partners_notified' => $partnersNotified,
         'failed_notifications' => $failedNotifications,
+        'excluded_rejected_partners' => $totalRejected,
         'order_id' => $order_id,
         'order_details' => $orderData,
         'notification_results' => $notificationResults
@@ -909,50 +905,127 @@ class DeliveryController extends Controller
     ], 200);
   }
 
-  private function getOrderDetails($orderId) {
+  private function getOrderDetailsForNotification($orderId, $includeUserDetails = false, $orderStatus='all') {
     try {
-      // Get order details
-      $order = FoodDeliveryOrder::with('order_items')->find($orderId);
+      $productData = Cache::remember('product_data', Carbon::now()->addDay(), function() {
+        return DB::table('food_delivery_plugin_base_multi_lang')
+        ->where('model', 'pjProduct')->select('foreign_id', 'field', 'content')->get()
+        ->groupBy('foreign_id')
+        ->map(fn($items, $foreignId) => array_merge(
+            ['foreign_id' => $foreignId],
+            $items->pluck('content', 'field')->toArray()
+        ))
+        ->values();
+      });
+
+      $orderQuery = FoodDeliveryOrder::with('order_items');
+      $order = $orderQuery->find($orderId);
       
       if (!$order) {
         return null;
       }
 
-      // Get pickup location details
+      // Get assigned partner details if requested
+      $assignedPartner = null;
+      if ($includeUserDetails) {
+        $partnerTakenOrderQuery = FoodDeliveryPartnerTakenOrder::with(['order' => function($query) {
+          $query->select('id', 'is_paid', 'order_id', 'first_name', 'surname', 'phone_no');
+        }])->where('order_id', $orderId);
+        
+        if($orderStatus !== 'all') {
+          $partnerTakenOrderQuery->where('order_status', $orderStatus);
+        }
+        
+        $partnerTakenOrder = $partnerTakenOrderQuery->first();
+        
+        if ($partnerTakenOrder) {
+          $partner = FoodDeliveryPartner::find($partnerTakenOrder->user_id);
+          if ($partner) {
+            $assignedPartner = [
+              'partner_id' => $partner->id,
+              'partner_name' => $partner->name,
+              'partner_phone' => $partner->mobile_no,
+              'order_status' => $partnerTakenOrder->order_status,
+              'assigned_at' => $partnerTakenOrder->created_at,
+              'updated_at' => $partnerTakenOrder->updated_at
+            ];
+          }
+        }
+      }
+
       $pickupLocation = DB::table('food_delivery_plugin_base_multi_lang')
         ->select('field', 'content')
         ->where('model', 'pjLocation')
         ->where('locale', 1)
         ->pluck('content', 'field');
-
-      $pickupCoordinates = DB::table('food_delivery_locations')
+      
+      $pickupLocationCoOrdinates = DB::table('food_delivery_locations')
         ->select('lat', 'lng')
         ->where('id', 1)
         ->first();
 
-      // Calculate total items
-      $totalItems = $order->order_items->sum('cnt');
+      $orderItems = $order->order_items->map(function($item) use ($productData) {
+        $productName = $productData->firstWhere('foreign_id', $item->foreign_id)['name'] ?? 'N/A';
+        return [
+          'name' => $productName,
+          'quantity' => $item->cnt,
+          'price' => $item->price,
+        ];
+      });
 
-      return [
+      $latitude = $order->d_latitude;
+      $longitude = $order->d_longitude;
+      $zipCode = $order->d_zip;
+      if (is_null($latitude) || is_null($longitude)) {
+        if ($zipCode !== null) {
+          $locationCoordinates = $this->getCoordinatesFromZipCode($zipCode);
+          if ($locationCoordinates !== null) {
+            $latitude = $locationCoordinates['latitude'];
+            $longitude = $locationCoordinates['longitude'];
+            
+            DB::table('food_delivery_orders')
+              ->where('id', $order->id)
+              ->update([
+                'd_latitude' => $latitude,
+                'd_longitude' => $longitude
+              ]);
+          }
+        }
+      }
+
+      $orderData = [
+        'id' => $order->id,
         'order_id' => $order->order_id,
-        'total_amount' => $order->total,
-        'total_items' => $totalItems,
-        'customer_name' => $order->first_name . ' ' . $order->surname,
-        'customer_phone' => $order->phone_no,
-        'pickup_location' => [
-          'name' => $pickupLocation['name'] ?? 'Restaurant',
-          'address' => $pickupLocation['address'] ?? 'N/A',
-          'latitude' => $pickupCoordinates->lat ?? null,
-          'longitude' => $pickupCoordinates->lng ?? null
-        ],
-        'delivery_location' => [
-          'address' => $order->d_address_1 . ', ' . $order->d_city . ', ' . $order->d_state,
-          'postcode' => $order->d_zip,
-          'latitude' => $order->d_latitude,
-          'longitude' => $order->d_longitude,
-          'notes' => $order->d_notes
-        ]
+        'payment_status' => $order->is_paid,
+        'first_name' => $order->first_name,
+        'surname' => $order->surname,
+        'phone_no' => $order->phone_no,
+        'p_name' => $pickupLocation['name'] ?? 'N/A',
+        'p_address' => $pickupLocation['address'] ?? 'N/A',
+        'p_latitude' => $pickupLocationCoOrdinates->lat ?? 'N/A',
+        'p_longitude' => $pickupLocationCoOrdinates->lng ?? 'N/A',
+        'p_notes' => $order->p_notes,
+        'd_latitude' => $latitude,
+        'd_longitude' => $longitude,
+        'd_address_1' => $order->d_address_1,
+        'd_address_2' => $order->d_address_2,
+        'd_city' => $order->d_city,
+        'd_state' => $order->d_state,
+        'd_zip' => $order->d_zip,
+        'd_notes' => $order->d_notes,
+        'post_code' => $order->post_code,
+        'subtotal' => $order->subtotal,
+        'total' => $order->total,
+        'customer_paid' => $order->customer_paid,
+        'order_items' => $orderItems,
       ];
+
+      // Add assigned partner details if requested and available
+      if ($includeUserDetails && $assignedPartner) {
+        $orderData['assigned_partner'] = $assignedPartner;
+      }
+
+      return $orderData;
 
     } catch (Exception $e) {
       return null;
