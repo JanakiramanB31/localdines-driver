@@ -551,9 +551,15 @@ class DeliveryController extends Controller
       ], 404);
     }
 
-    // Check if order is already accepted by someone
+    // Check if this partner already has this order assigned first
+    $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+    ->where('order_id', $orderId)->first();
+
+    // Check if order is already accepted by someone else
     $existingAssignment = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
-    ->where('order_status', 'accepted')->first();
+    ->where('order_status', 'accepted')
+    ->where('user_id', '!=', $userId)
+    ->first();
 
     if ($existingAssignment) {
       return response()->json([
@@ -562,10 +568,6 @@ class DeliveryController extends Controller
         'message' => 'Order already accepted by another partner',
       ], 409);
     }
-
-    // Check if this partner already has this order assigned
-    $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
-    ->where('order_id', $orderId)->first();
 
     if ($partnerOrder) {
       if ($partnerOrder->order_status == 'accepted') {
@@ -929,7 +931,7 @@ class DeliveryController extends Controller
       $assignedPartner = null;
       if ($includeUserDetails) {
         $partnerTakenOrderQuery = FoodDeliveryPartnerTakenOrder::with(['order' => function($query) {
-          $query->select('id', 'is_paid', 'order_id', 'first_name', 'surname', 'phone_no');
+          $query->select('id', 'is_paid', 'price_delivery', 'order_id', 'first_name', 'surname', 'phone_no');
         }])->where('order_id', $orderId);
         
         if($orderStatus !== 'all') {
@@ -997,6 +999,7 @@ class DeliveryController extends Controller
         'id' => $order->id,
         'order_id' => $order->order_id,
         'payment_status' => $order->is_paid,
+        'delivery_charges' => $order->price_delivery,
         'first_name' => $order->first_name,
         'surname' => $order->surname,
         'phone_no' => $order->phone_no,
