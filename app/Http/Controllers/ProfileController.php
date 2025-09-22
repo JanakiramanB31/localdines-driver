@@ -66,11 +66,23 @@ class ProfileController extends Controller
 
     $data = $userData->toArray();
 
+    $documents = FoodDeliveryPartnerDocument::select('doc_type', 'doc_number', 'doc_expiry', 'doc_url')
+    ->where('partner_id', $userId)->get()
+     ->map(function ($doc) {
+        $doc->doc_expiry = $doc->doc_expiry 
+            ? Carbon::parse($doc->doc_expiry)->format('d-m-Y') 
+            : null;
+        return $doc;
+    });;
+
+
     unset($data['admin_approval'], $data['is_active'], $data['updated_at'], $data['approved_at']);
     $data['duty_status'] = $data['duty_status'] == 1 ? "online" : "offline";
     $data['is_non_british'] = $data['is_non_british'] == 1 ? true : false;
     $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
     unset($data['created_at']);
+
+    $data['documents'] = $documents;
 
     return response()->json([
       'code' => 200,
@@ -513,10 +525,16 @@ class ProfileController extends Controller
       $deliveryPartnerDocs->doc_expiry = $doc['doc_expiry'] ?? null;
       if ($request->hasFile("docs.$index.doc_url")) {
         $document = $request->file("docs.$index.doc_url");
-        $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();        
-        $publicPath = base_path('public');
-        $document->move($publicPath . '/images/users/', $docName);
-        $deliveryPartnerDocs->doc_url = $docName;
+        $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
+
+        $uploadPath = public_path("images/users/$userId");     
+
+        if (!file_exists($uploadPath)) {
+          mkdir($uploadPath, 0777, true);
+        }
+
+        $document->move($uploadPath, $docName);
+        $deliveryPartnerDocs->doc_url = "images/users/$userId/$docName";
       } else {
         $deliveryPartnerDocs->doc_url = null;
       }
