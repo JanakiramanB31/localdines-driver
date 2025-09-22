@@ -73,7 +73,7 @@ class ProfileController extends Controller
             ? Carbon::parse($doc->doc_expiry)->format('d-m-Y') 
             : null;
         return $doc;
-    });;
+    });
 
 
     unset($data['admin_approval'], $data['is_active'], $data['updated_at'], $data['approved_at']);
@@ -144,7 +144,7 @@ class ProfileController extends Controller
   }
 
   public function checkAccountStatus(Request $request) {
-    
+
     $userId = $request->auth->sub;
 
     $userData = FoodDeliveryPartner::find($userId);
@@ -160,8 +160,8 @@ class ProfileController extends Controller
     $data = $userData->toArray();
 
     unset(
-      $data['title'], 
-      $data['phone_number'], 
+      $data['title'],
+      $data['phone_number'],
       $data['gender'],
       $data['email'],
       $data['is_active'],
@@ -176,6 +176,12 @@ class ProfileController extends Controller
     $data['approved_at'] = $data['approved_at'] !== null ? Carbon::parse($data['approved_at'])->format('d-m-Y') : null;
     $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
     unset($data['created_at'], $data['updated_at']);
+
+    $bankInfo = FoodDeliveryPartnerBankAccInformation::where('partner_id', $userId)->first();
+    $otherInfo = FoodDeliveryPartnerOtherInformation::where('partner_id', $userId)->first();
+
+    $data['is_bank_info_completed'] = $bankInfo ? true : false;
+    $data['is_other_info_completed'] = $otherInfo ? true : false;
 
     return response()->json([
       'code' => 200,
@@ -383,6 +389,61 @@ class ProfileController extends Controller
 
   }
 
+  public function GetBankAccInfo(Request $request) {
+    
+    $userId = $request->auth->sub;
+
+    $userData = FoodDeliveryPartner::find($userId);
+
+    if(!$userData) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    if ($userData->admin_approval == "rejected" ) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Rejected by admin'
+      ], 401);
+    }
+
+    if ($userData->admin_approval != "accepted" ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User not approved by admin'
+      ], 401);
+    }
+
+    if ($userData->is_active == 0 ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User status is Inactive'
+      ], 401);
+    }
+
+    $bankAccData = FoodDeliveryPartnerBankAccInformation::where('partner_id', $userId)->first();
+
+    unset(
+      $bankAccData['id'],
+      $bankAccData['is_active'], 
+      $bankAccData['created_at'], 
+      $bankAccData['updated_at']
+    );
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Bank Info retrieved Successfully',
+      'data' => $bankAccData
+    ], 200);
+  }
+
   /**
    * @OA\Post(
    *     path="/profile/update-additional-info",
@@ -583,6 +644,79 @@ class ProfileController extends Controller
       'message' => 'Profile Info Updated Successfully',
     ], 200);
 
+  }
+
+  /**
+   * @OA\Get(
+   *     path="/profile/update-info",
+   *     summary="Get update profile information data",
+   *     tags={"Profile"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\Response(
+   *         response=200,
+   *         description="Update Profile Info retrieved Successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Update Profile Info retrieved Successfully"),
+   *             @OA\Property(property="data", type="object", description="Other information data")
+   *         )
+   *     )
+   * )
+   */
+  public function getOtherProfileInfo(Request $request) {
+
+    $userId = $request->auth->sub;
+
+    $userData = FoodDeliveryPartner::find($userId);
+
+    if(!$userData) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    if ($userData->admin_approval == "rejected" ) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'User Rejected by admin'
+      ], 401);
+    }
+
+    if ($userData->admin_approval != "accepted" ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User not approved by admin'
+      ], 401);
+    }
+
+    if ($userData->is_active == 0 ) {
+      return response()->json([
+        'code' => 401,
+        'success' => true,
+        'message' => 'User status is Inactive'
+      ], 401);
+    }
+
+    $otherInfo = FoodDeliveryPartnerOtherInformation::where('partner_id', $userId)->first();
+
+    unset(
+      $otherInfo['id'],
+      $otherInfo['is_active'], 
+      $otherInfo['created_at'], 
+      $otherInfo['updated_at']
+    );
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Update Profile Info retrieved Successfully',
+      'data' => $otherInfo
+    ], 200);
   }
 
   // public function updateUserReferences(Request $request) {

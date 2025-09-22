@@ -109,7 +109,13 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       $router->post('/update', 'ProfileController@updateProfileInfo');
 
       /* Update Bank Account Info */
-      $router->post('/update/bank', 'ProfileController@updateBankAccInfo');
+      $router->post('/bank/update', 'ProfileController@updateBankAccInfo');
+
+      /* Get Bank Account Info */
+      $router->get('/bank/info', 'ProfileController@GetBankAccInfo');
+
+      /* Get Update Profile Info */
+      $router->get('/other/info', 'ProfileController@getOtherProfileInfo');
 
     });
 
