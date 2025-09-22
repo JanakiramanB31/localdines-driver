@@ -455,6 +455,14 @@ class ProfileController extends Controller
    */
 
   public function updateProfileInfo(Request $request) {
+    //  dd([
+    //     'all'   => $request->all(),
+    //     'files' => $request->file('docs.0.doc_url'),
+    //     'ab' => $request->file('a'),
+    //     'hasFiles' => $request->hasFile('docs.0.doc_url'),
+    //     'a' => $request->hasFile('a'),
+    // ]);
+    // exit;
     $this->validate($request, [
       'requires_work_permit' => 'required|boolean',
       /* Documents array validation */
@@ -462,7 +470,7 @@ class ProfileController extends Controller
       'docs.*.doc_type' => 'required|in:visa,passport,ni,license,sign',
       'docs.*.doc_number' => 'nullable|string',
       'docs.*.doc_expiry' => 'nullable|date',
-      'docs.*.doc_url' => 'file|mimes:jpeg,png,jpg,svg,pdf|max:2048',
+      'docs.*.doc_file' => 'required|file|mimes:jpeg,png,jpg,svg,pdf|max:2048',
 
       'uses_car' => 'required|boolean',
       'uses_motorcycle' => 'required|boolean',
@@ -517,6 +525,9 @@ class ProfileController extends Controller
 
     $deliveryPartnerOtherInfo->save();
 
+    $this->pr($request->docs);
+    exit;
+
     foreach ($request->docs as $index => $doc) {
       $deliveryPartnerDocs = new FoodDeliveryPartnerDocument(); 
       $deliveryPartnerDocs->partner_id = $userId;
@@ -527,7 +538,8 @@ class ProfileController extends Controller
         $document = $request->file("docs.$index.doc_url");
         $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
 
-        $uploadPath = public_path("images/users/$userId");     
+        $uploadPath = public_path("images/users/$userId");
+        echo $uploadPath;  
 
         if (!file_exists($uploadPath)) {
           mkdir($uploadPath, 0777, true);

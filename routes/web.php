@@ -64,13 +64,13 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       $router->post('/details', 'DeliveryController@getOrderDetails');
 
       /* Updating Order Status Route */
-      $router->put('/status', 'DeliveryController@updateOrderStatus');
+      $router->post('/status', 'DeliveryController@updateOrderStatus');
 
       /* Sending Delivery OTP Route */
       $router->post('/otp/send', 'DeliveryController@sendDeliveryOTP');
 
       /* Completing Delivery Route */
-      $router->put('/complete', 'DeliveryController@completeOrder');
+      $router->post('/complete', 'DeliveryController@completeOrder');
 
       /* Fetching Order History */
       $router->get('/history', 'DeliveryController@OrderHistory');
@@ -89,7 +89,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       $router->post('/update-fcm-token', 'DeliveryController@updateFcmToken');
 
       /* Updating Duty Status */
-      $router->put('/status', 'DeliveryController@dutyStatusUpdate');
+      $router->post('/status', 'DeliveryController@dutyStatusUpdate');
 
       /* Retrieve Duty Status */
       $router->get('/status', 'ProfileController@getDutyStatus');
@@ -106,10 +106,10 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       $router->get('/status', 'ProfileController@checkAccountStatus');
 
       /* pdation Additional Info */
-      $router->put('/update', 'ProfileController@updateProfileInfo');
+      $router->post('/update', 'ProfileController@updateProfileInfo');
 
       /* Update Bank Account Info */
-      $router->put('/update/bank', 'ProfileController@updateBankAccInfo');
+      $router->post('/update/bank', 'ProfileController@updateBankAccInfo');
 
     });
 
