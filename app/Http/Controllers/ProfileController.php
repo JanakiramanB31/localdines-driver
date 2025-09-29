@@ -596,8 +596,8 @@ class ProfileController extends Controller
         $document = $request->file("docs.$index.doc_url");
         $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
 
-        $uploadPath = public_path("images/users/$userId");
-        echo $uploadPath;  
+        $uploadPath = base_path("public/images/users/$userId");
+        // echo $uploadPath;  
 
         if (!file_exists($uploadPath)) {
           mkdir($uploadPath, 0777, true);
