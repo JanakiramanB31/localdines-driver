@@ -287,7 +287,7 @@ class AuthController extends Controller
   public function sendOTP(Request $request) {
 
     $this->validate($request,[
-      'phone_number' => 'required|integer',
+      'phone_number' => 'required|string|min:10|max:15',
     ]);
 
     $otpData = FoodDeliveryPartnerLoginOtp::where('phone_number', $request->phone_number)->OrderBy('created_at', 'desc')->first();
@@ -353,7 +353,7 @@ class AuthController extends Controller
   public function verifyOTP(Request $request) {
 
     $this->validate($request,[
-      'phone_number' => 'required',
+      'phone_number' => 'required|string',
       'otp' => 'required|min:4'
     ]);
 
