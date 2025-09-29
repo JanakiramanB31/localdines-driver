@@ -531,7 +531,7 @@ class ProfileController extends Controller
       'docs.*.doc_type' => 'required|in:visa,passport,ni,license,sign',
       'docs.*.doc_number' => 'nullable|string',
       'docs.*.doc_expiry' => 'nullable|date',
-      'docs.*.doc_file' => 'required|file|mimes:jpeg,png,jpg,svg,pdf|max:2048',
+      'docs.*.doc_url' => 'required|file|mimes:jpeg,png,jpg,svg,pdf|max:2048',
 
       'uses_car' => 'required|boolean',
       'uses_motorcycle' => 'required|boolean',
@@ -585,9 +585,6 @@ class ProfileController extends Controller
     $deliveryPartnerOtherInfo->is_agreed_privacy_policy  = $request->is_agreed_privacy_policy;
 
     $deliveryPartnerOtherInfo->save();
-
-    $this->pr($request->docs);
-    exit;
 
     foreach ($request->docs as $index => $doc) {
       $deliveryPartnerDocs = new FoodDeliveryPartnerDocument(); 
