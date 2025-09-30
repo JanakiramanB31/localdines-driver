@@ -78,7 +78,7 @@ class AuthController extends Controller
       'email' => 'required|email|unique:food_delivery_partners,email',
       'password' => 'required|min:8',
       'dob' => 'required|date',
-      'nationality' => 'required',
+      // 'nationality' => 'required', //Default is United Kingdom
       'is_non_british' => 'required|boolean',
       //'has_full_uk_driving_licence' => 'required|boolean',
      
@@ -108,7 +108,7 @@ class AuthController extends Controller
     $deliveryPartner->email = $request->email;
     $deliveryPartner->password = Hash::make($request->password);
     $deliveryPartner->dob = $request->dob;
-    $deliveryPartner->nationality = $request->nationality;
+    $deliveryPartner->nationality = $request->nationality ?? "United Kingdom";
     //$deliveryPartner->gender = $request->gender;
     $deliveryPartner->is_non_british  = $request->is_non_british;
    // $deliveryPartner->vehicle_number = $request->vehicle_number;
