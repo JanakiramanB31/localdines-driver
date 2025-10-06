@@ -866,12 +866,14 @@ class DeliveryController extends Controller
       ], 404);
     }
 
+    
     $partnersNotified = 0;
     $failedNotifications = 0;
     $notificationResults = [];
     
     foreach ($onlinePartners as $partner) {
       $result = $this->sendPushNotification($partner, $order_id, $message, $orderData);
+      $partnerName = trim($partner->f_name." ".$partner->m_name." ".$partner->l_name);
       
       if ($result['success']) {
         $partnersNotified++;
@@ -881,7 +883,7 @@ class DeliveryController extends Controller
       
       $notificationResults[] = [
         'partner_id' => $partner->id,
-        'partner_name' => $partner->name,
+        'partner_name' => $partnerName,
         'status' => $result['success'] ? 'sent' : 'failed',
         'error' => $result['error'] ?? null
       ];
@@ -1020,7 +1022,7 @@ class DeliveryController extends Controller
         'subtotal' => $order->subtotal,
         'total' => $order->total,
         'customer_paid' => $order->customer_paid,
-        'order_items' => $orderItems,
+        'order_items' => $orderItems->values()->toArray(),
       ];
 
       // Add assigned partner details if requested and available
@@ -1038,75 +1040,207 @@ class DeliveryController extends Controller
   private function sendPushNotification($partner, $orderId, $message, $orderData = null) {
     try {
       $fcmToken = $partner->fcm_token;
-      
+
       if (!$fcmToken) {
         return ['success' => false, 'error' => 'No FCM token found'];
       }
 
-      $serverKey = env('FCM_SERVER_KEY');
-      if (!$serverKey) {
-        return ['success' => false, 'error' => 'FCM server key not configured'];
+      $projectId = env('FIREBASE_PROJECT_ID');
+      if (!$projectId) {
+        return ['success' => false, 'error' => 'Firebase project ID not configured'];
+      }
+
+      // Get OAuth 2.0 access token
+      $accessToken = $this->getFirebaseAccessToken();
+      if (!$accessToken) {
+        return ['success' => false, 'error' => 'Failed to get Firebase access token'];
       }
 
       // Enhanced notification body with order info
       $notificationBody = $message;
       if ($orderData) {
-        $notificationBody = "Order #{$orderData['order_id']} - £{$orderData['total_amount']} - {$orderData['total_items']} items";
+        $itemCount = isset($orderData['order_items']) ? count($orderData['order_items']) : 0;
+
+        // Build full delivery address
+        $deliveryParts = array_filter([
+          $orderData['d_address_1'] ?? '',
+          $orderData['d_address_2'] ?? '',
+          $orderData['d_city'] ?? '',
+          $orderData['d_zip'] ?? ''
+        ]);
+        $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
+
+        // Build full pickup address
+        $pickupParts = array_filter([
+          $orderData['p_name'] ?? '',
+          $orderData['p_address'] ?? ''
+        ]);
+        $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
+
+        $notificationBody = "Order #{$orderData['order_id']} - {$itemCount} items - £{$orderData['total']} \n";
+        $notificationBody .= "From: {$pickupLocation}\n";
+        $notificationBody .= "To: {$deliveryLocation}";
       }
 
+      // FCM HTTP v1 API payload structure
       $notificationData = [
-        'to' => $fcmToken,
-        'notification' => [
-          'title' => 'New Order Available!',
-          'body' => $notificationBody,
-          'icon' => 'ic_notification',
-          'sound' => 'default',
-          'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
-        ],
-        'data' => [
-          'order_id' => (string) $orderId,
-          'type' => 'new_order',
-          'timestamp' => Carbon::now()->toISOString(),
-          'order_details' => json_encode($orderData)
+        'message' => [
+          'token' => $fcmToken,
+          'notification' => [
+            'title' => 'New Order Available!',
+            'body' => $notificationBody
+          ],
+          'data' => [
+            'order_id' => (string) $orderId,
+            'type' => 'new_order',
+            'timestamp' => Carbon::now()->toISOString(),
+            'order_details' => json_encode($orderData)
+          ],
+          'android' => [
+            'notification' => [
+              'icon' => 'ic_notification',
+              'sound' => 'default',
+              'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+            ]
+          ],
+          'apns' => [
+            'payload' => [
+              'aps' => [
+                'sound' => 'default'
+              ]
+            ]
+          ]
         ]
       ];
 
       $headers = [
-        'Authorization: key=' . $serverKey,
+        'Authorization: Bearer ' . $accessToken,
         'Content-Type: application/json'
       ];
 
+      $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
       $ch = curl_init();
-      curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
+      curl_setopt($ch, CURLOPT_URL, $url);
       curl_setopt($ch, CURLOPT_POST, true);
       curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
       curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($notificationData));
       curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
       $response = curl_exec($ch);
       $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      
+
       if (curl_error($ch)) {
+        $error = curl_error($ch);
         curl_close($ch);
-        return ['success' => false, 'error' => 'cURL error: ' . curl_error($ch)];
+        return ['success' => false, 'error' => 'cURL error: ' . $error];
       }
-      
+
       curl_close($ch);
 
       if ($httpCode === 200) {
-        $responseData = json_decode($response, true);
-        if (isset($responseData['success']) && $responseData['success'] > 0) {
-          return ['success' => true];
-        } else {
-          return ['success' => false, 'error' => 'FCM response indicates failure'];
-        }
+        return ['success' => true];
       } else {
-        return ['success' => false, 'error' => "HTTP error: {$httpCode}"];
+        $responseData = json_decode($response, true);
+        $errorMsg = isset($responseData['error']['message'])
+          ? $responseData['error']['message']
+          : "HTTP error: {$httpCode}";
+
+        // Add full error details for debugging
+        if (isset($responseData['error'])) {
+          $errorMsg .= " (Code: " . ($responseData['error']['status'] ?? 'N/A') . ")";
+          if (isset($responseData['error']['details'])) {
+            $errorMsg .= " - Details: " . json_encode($responseData['error']['details']);
+          }
+        }
+
+        return ['success' => false, 'error' => $errorMsg, 'full_response' => $responseData];
       }
 
     } catch (Exception $e) {
       return ['success' => false, 'error' => 'Exception: ' . $e->getMessage()];
     }
+  }
+
+  private function getFirebaseAccessToken() {
+    try {
+      // Get credentials from environment variables
+      $privateKey = env('FIREBASE_PRIVATE_KEY');
+      $clientEmail = env('FIREBASE_CLIENT_EMAIL');
+
+      if (!$privateKey || !$clientEmail) {
+        return null;
+      }
+
+      // Replace escaped newlines in private key
+      $privateKey = str_replace('\\n', "\n", $privateKey);
+
+      $credentials = [
+        'private_key' => $privateKey,
+        'client_email' => $clientEmail
+      ];
+      
+      // Create JWT
+      $now = time();
+      $expiry = $now + 3600;
+      
+      $header = [
+        'alg' => 'RS256',
+        'typ' => 'JWT'
+      ];
+      
+      $claimSet = [
+        'iss' => $credentials['client_email'],
+        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+        'aud' => 'https://oauth2.googleapis.com/token',
+        'iat' => $now,
+        'exp' => $expiry
+      ];
+      
+      $encodedHeader = $this->base64UrlEncode(json_encode($header));
+      $encodedClaimSet = $this->base64UrlEncode(json_encode($claimSet));
+      $signatureInput = $encodedHeader . '.' . $encodedClaimSet;
+      
+      $signature = '';
+      openssl_sign($signatureInput, $signature, $credentials['private_key'], 'SHA256');
+      $encodedSignature = $this->base64UrlEncode($signature);
+      
+      $jwt = $signatureInput . '.' . $encodedSignature;
+      // Exchange JWT for access token
+      $ch = curl_init();
+      curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        'assertion' => $jwt
+      ]));
+
+      $response = curl_exec($ch);
+
+      if (curl_error($ch)) {
+        echo "cURL Error: " . curl_error($ch);
+        exit;
+      }
+
+      curl_close($ch);
+
+      $responseData = json_decode($response, true);
+
+      return $responseData['access_token'] ?? null;
+
+    } catch (Exception $e) {
+      $this->pr("Error", $e);
+      return null;
+    }
+  }
+
+  private function base64UrlEncode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
   }
 }
