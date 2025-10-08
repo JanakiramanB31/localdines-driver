@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FoodDeliveryPartner;
+use App\Models\FoodDeliveryPartnerAddress;
 use App\Models\FoodDeliveryPartnerBankAccInformation;
 use App\Models\FoodDeliveryPartnerDocument;
 use App\Models\FoodDeliveryPartnerKinInformation;
@@ -763,4 +764,153 @@ class ProfileController extends Controller
   //   ], 200);
 
   // }
+
+  /**
+   * @OA\Post(
+   *     path="/profile/update-personal-info",
+   *     summary="Update user personal information",
+   *     tags={"Profile"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\RequestBody(
+   *         required=true,
+   *         @OA\JsonContent(
+   *             @OA\Property(property="title", type="string"),
+   *             @OA\Property(property="f_name", type="string", minLength=3),
+   *             @OA\Property(property="m_name", type="string", minLength=1),
+   *             @OA\Property(property="s_name", type="string", minLength=3),
+   *             @OA\Property(property="email", type="string", format="email"),
+   *             @OA\Property(property="phone_number", type="string"),
+   *             @OA\Property(property="dob", type="string", format="date"),
+   *             @OA\Property(property="nationality", type="string"),
+   *             @OA\Property(property="is_non_british", type="boolean"),
+   *             @OA\Property(property="home_no", type="string"),
+   *             @OA\Property(property="home_name", type="string"),
+   *             @OA\Property(property="street_name", type="string"),
+   *             @OA\Property(property="city", type="string"),
+   *             @OA\Property(property="county", type="string"),
+   *             @OA\Property(property="post_code", type="string"),
+   *             @OA\Property(property="home_phone", type="string")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Personal Info Updated Successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Personal Info Updated Successfully")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=401,
+   *         description="User not approved by admin",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=401),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="User not approved by admin")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="User Not Found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="User Not Found")
+   *         )
+   *     )
+   * )
+   */
+
+  public function updatePersonalInfo(Request $request) {
+    $this->validate($request, [
+      'title' => 'nullable|string',
+      'f_name' => 'nullable|min:3',
+      's_name' => 'nullable|min:3',
+      'm_name' => 'nullable|min:1',
+      'phone_number' => 'nullable|string',
+      'email' => 'nullable|email',
+      'dob' => 'nullable|date',
+      'nationality' => 'nullable|string',
+      'is_non_british' => 'nullable|boolean',
+
+      /* Address Info */
+      'home_no' => 'nullable|string|required_without:home_name',
+      'home_name' => 'nullable|string|required_without:home_no',
+      'street_name' => 'nullable|string',
+      'city' => 'nullable|string',
+      'county' => 'nullable|string',
+      'post_code' => 'nullable|string',
+      'home_phone' => 'nullable|string',
+    ]);
+
+    $userId = $request->auth->sub;
+
+    $deliveryPartner = FoodDeliveryPartner::find($userId);
+
+    if(!$deliveryPartner) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User Not Found',
+      ], 404);
+    }
+
+    if ($deliveryPartner->admin_approval != "accepted" ) {
+      return response()->json([
+        'code' => 401,
+        'success' => false,
+        'message' => 'User not approved by admin'
+      ], 401);
+    }
+
+    $checkEmailExistence = FoodDeliveryPartner::where('email', $request->email)->where('id', '!=', $userId)->first();
+    
+    if ($checkEmailExistence) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Email already taken by another user',
+      ], 400);
+    }
+
+    $checkPhoneExistence = FoodDeliveryPartner::where('phone_number', $request->phone_number)->where('id', '!=', $userId)->first();
+    
+    if ($checkPhoneExistence) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Phone number already taken by another user',
+      ], 400);
+    }
+
+    $deliveryPartner->title = $request->title ?? $deliveryPartner->title;
+    $deliveryPartner->f_name = $request->f_name ?? $deliveryPartner->f_name;
+    $deliveryPartner->m_name = $request->m_name ?? $deliveryPartner->m_name;
+    $deliveryPartner->s_name = $request->s_name ?? $deliveryPartner->s_name;
+    $deliveryPartner->phone_number = $request->phone_number ?? $deliveryPartner->phone_number;
+    $deliveryPartner->email = $request->email ?? $deliveryPartner->email;
+    $deliveryPartner->dob = $request->dob ?? $deliveryPartner->dob;
+    $deliveryPartner->nationality = $request->nationality ?? $deliveryPartner->nationality;
+    $deliveryPartner->is_non_british = $request->is_non_british ?? $deliveryPartner->is_non_british;
+    $deliveryPartner->save();
+
+    $deliveryPartnerAddress = FoodDeliveryPartnerAddress::where('partner_id', $userId)->first();
+
+    $deliveryPartnerAddress->home_no = $request->home_no;
+    $deliveryPartnerAddress->home_name = $request->home_name;
+    $deliveryPartnerAddress->street_name = $request->street_name;
+    $deliveryPartnerAddress->city = $request->city;
+    $deliveryPartnerAddress->county = $request->county;
+    $deliveryPartnerAddress->post_code = $request->post_code;
+    $deliveryPartnerAddress->home_phone = $request->home_phone;
+
+    $deliveryPartnerAddress->save();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Personal Info Updated Successfully',
+    ], 200);
+  }
 }

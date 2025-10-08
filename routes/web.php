@@ -105,8 +105,11 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       /* Check Account Status */
       $router->get('/status', 'ProfileController@checkAccountStatus');
 
-      /* pdation Additional Info */
+      /* Update Additional Info */
       $router->post('/update', 'ProfileController@updateProfileInfo');
+
+      /* Update Personal Info */
+      $router->post('/personal/update', 'ProfileController@updatePersonalInfo');
 
       /* Update Bank Account Info */
       $router->post('/bank/update', 'ProfileController@updateBankAccInfo');
