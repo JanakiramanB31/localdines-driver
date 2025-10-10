@@ -63,6 +63,8 @@ $app->singleton(
 */
 
 $app->configure('app');
+$app->configure('mail');
+$app->configure('services');
 
 /*
 |--------------------------------------------------------------------------
@@ -102,6 +104,9 @@ $app->routeMiddleware([
 // $app->register(App\Providers\AppServiceProvider::class);
 // $app->register(App\Providers\AuthServiceProvider::class);
 // $app->register(App\Providers\EventServiceProvider::class);
+
+// Register Mail Service Provider
+$app->register(Illuminate\Mail\MailServiceProvider::class);
 
 /*
 |--------------------------------------------------------------------------

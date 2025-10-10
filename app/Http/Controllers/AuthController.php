@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\JwtAuthHelper;
+use App\Helpers\MailHelper;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerAddress;
 use App\Models\FoodDeliveryPartnerBankAccInfo;
 use App\Models\FoodDeliveryPartnerDocument;
 use App\Models\FoodDeliveryPartnerKinInfo;
 use App\Models\FoodDeliveryPartnerOtherInfo;
-use App\Models\FoodDeliveryPartnerLoginOtp;
+use App\Models\FoodDeliveryPartnerAuthOtp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -290,7 +291,7 @@ class AuthController extends Controller
       'phone_number' => 'required|string|min:10|max:15',
     ]);
 
-    $otpData = FoodDeliveryPartnerLoginOtp::where('phone_number', $request->phone_number)->OrderBy('created_at', 'desc')->first();
+    $otpData = FoodDeliveryPartnerAuthOtp::where('phone_number', $request->phone_number)->OrderBy('created_at', 'desc')->first();
 
     if ($otpData && $otpData->otp && $otpData->expires_at > time()) {
       return response()->json([
@@ -302,7 +303,7 @@ class AuthController extends Controller
 
     $otp = mt_rand(1000, 9999);
 
-    $newOTP = new FoodDeliveryPartnerLoginOtp();
+    $newOTP = new FoodDeliveryPartnerAuthOtp();
     $newOTP->phone_number = $request->phone_number;
     $newOTP->otp = $otp;
     $newOTP->expires_at = time() + 1*60;
@@ -350,47 +351,39 @@ class AuthController extends Controller
    * )
   */
 
-  public function verifyOTP(Request $request) {
+  public function verifySMSOTP(Request $request) {
 
     $this->validate($request,[
       'phone_number' => 'required|string',
       'otp' => 'required|min:4'
     ]);
 
-    $otpData = FoodDeliveryPartnerLoginOtp::where('phone_number', $request->phone_number)->whereNull('status')->OrderBy('created_at', 'desc')->first();
+    return $this->verifyOTP($request, 'phone');
+  }
 
-    if(!$otpData) {
-      return response()->json([
-        'code' => 400,
-        'success' => false,
-        'message' => 'Invalid Mobile Number',
-      ], 400);
+  public function verifyEmailOTP(Request $request) {
+
+    $this->validate($request,[
+      'email' => 'required|string',
+      'otp' => 'required|min:4'
+    ]);
+
+    $response = $this->verifyOTP($request, 'email');
+
+    // If OTP verification was successful, add user_id to response
+    if ($response->getStatusCode() === 200) {
+      $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
+
+      if ($deliveryPartner) {
+        $responseData = $response->getData(true);
+        $responseData['data'] = [
+          'user_id' => $deliveryPartner->id
+        ];
+        return response()->json($responseData, 200);
+      }
     }
 
-    if (($request->phone_number != $otpData->phone_number) || ($request->otp != $otpData->otp)) {
-      return response()->json([
-        'code' => 400,
-        'success' => false,
-        'message' => 'Invalid OTP',
-      ], 400);
-    }
-
-    if ($otpData->expires_at < time()) {
-      return response()->json([
-        'code' => 400,
-        'success' => false,
-        'message' => 'OTP Expired',
-      ], 400);
-    }
-
-    $otpData->status = 'verified';
-    $otpData->save();
-
-    return response()->json([
-      'code' => 200,
-      'success' => true,
-      'message' => 'OTP Verified',
-    ], 200);
+    return $response;
   }
 
   /**
@@ -470,6 +463,147 @@ class AuthController extends Controller
         'message' => $e->getMessage()
       ], 401);
     }
+  }
+
+  public function forgotPassword(Request $request) {
+    $this->validate($request, [
+      'email' => 'required|email'
+    ]);
+
+    $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
+
+    if (!$deliveryPartner) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'If the email exists in our system, you will receive a password reset code shortly.',
+      ]);
+    }
+
+    $otpData = FoodDeliveryPartnerAuthOtp::where('email', $request->email)->OrderBy('created_at', 'desc')->first();
+
+    // if ($otpData && $otpData->otp && $otpData->is_used === 0 && $otpData->expires_at > time()) {
+    //   return response()->json([
+    //     'code' => 429,
+    //     'success' => false,
+    //     'message' => 'Too Many Requests Sent',
+    //   ], 429);
+    // }
+
+    $otp = mt_rand(1000, 9999);
+
+    $newOTP = new FoodDeliveryPartnerAuthOtp();
+    $newOTP->email = $request->email;
+    $newOTP->otp = $otp;
+    $newOTP->expires_at = time() + (1 * 60);
+    $newOTP->save();
+
+    // Send OTP email
+    MailHelper::sendOTPEmail($request->email, $otp);
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'If the email exists in our system, you will receive a password reset code shortly.',
+      'otp'=> $otp 
+    ], 200);
+  }
+
+  public function resetPassword(Request $request) {
+    
+    $this->validate($request, [
+      'user_id' => 'required|string',
+      'new_password' => [
+        'required',
+        'string',
+        'min:8',                // minimum 8 characters
+        'regex:/[a-z]/',        // at least one lowercase letter
+        'regex:/[A-Z]/',        // at least one uppercase letter
+        'regex:/[0-9]/',        // at least one number
+        'regex:/[@$!%*#?&]/',   // at least one special character
+        'same:confirm_password',            // matches confirm_password field
+      ],
+      'confirm_password' => 'required|string',
+    ]);
+
+    $deliveryPartner = FoodDeliveryPartner::find($request->user_id);
+
+    if (!$deliveryPartner) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User not found'
+      ]);
+    }
+
+    $deliveryPartner->password = Hash::make($request->new_password);
+    $deliveryPartner->save();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Password updated successfully'
+    ]);
+  }
+
+  public function verifyOTP(Request $request, $type) {
+
+    $otpQuery = FoodDeliveryPartnerAuthOtp::query();
+
+    if ($type === 'phone') {
+      $otpQuery->where('phone_number', $request->phone_number);
+    } elseif ($type === 'email') {
+      $otpQuery->where('email', $request->email);
+    } else {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Invalid type. Allowed: phone or email.',
+      ], 400);
+    }
+
+    $otpData = $otpQuery->orderBy('created_at', 'desc')->first();
+
+    if(!$otpData) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => $type === 'phone' ? 'Invalid Mobile Number' : 'Invalid Email Address',
+      ], 400);
+    }
+
+    if ($request->otp != $otpData->otp) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Invalid OTP',
+      ], 400);
+    }
+
+    if ($otpData->is_used === 1) {
+      return response()->json([
+        'code' => 409,
+        'success' => false,
+        'message' => 'OTP Already used',
+      ], 409);
+    }
+
+    if ($otpData->expires_at < time()) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'OTP Expired',
+      ], 400);
+    }
+
+    $otpData->is_used = 1;
+    $otpData->save();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'OTP Verified',
+    ], 200);
   }
     
 }

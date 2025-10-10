@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class FoodDeliveryPartnerLoginOtp extends Model
+class FoodDeliveryPartnerAuthOtp extends Model
 {
 
   /**
@@ -12,9 +12,6 @@ class FoodDeliveryPartnerLoginOtp extends Model
    *
    * @var array
  */
-  protected $fillable = [
-    'phone_number'
-  ];
 
   /**
    * The attributes excluded from the model's JSON form.

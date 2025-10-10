@@ -29,10 +29,19 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     $router->post('/otp/send', 'AuthController@sendOTP');
 
     /* Verify OTP Route */
-    $router->post('/otp/verify', 'AuthController@verifyOTP');
+    $router->post('/otp/verify', 'AuthController@verifySMSOTP');
 
     /* Generating New Access Token for Valid Refresh Token Route */
     $router->post('/refresh', 'AuthController@verifyRefreshToken');
+
+    /* Forgot Password Route */
+    $router->post('/forgot-password', 'AuthController@ForgotPassword');
+
+    /* Verify Email OTP Route */
+    $router->post('/otp/verify/email', 'AuthController@VerifyEmailOTP');
+
+    /* Reset Password Route */
+    $router->post('/reset-password', 'AuthController@ResetPassword');
 
   });
 
