@@ -40,10 +40,10 @@ class AdminController extends Controller
     }
 
     return response()->json([
-      'code' => 401,
-      'success' => true,
+      'code' => 403,
+      'success' => false,
       'message' => 'User not approved by admin'
-    ], 401);
+    ], 403);
 
   }
 
@@ -67,10 +67,10 @@ class AdminController extends Controller
     }
 
     return response()->json([
-      'code' => 401,
-      'success' => true,
+      'code' => 403,
+      'success' => false,
       'message' => 'User not approved by admin'
-    ], 401);
+    ], 403);
 
   }
     

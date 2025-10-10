@@ -76,7 +76,7 @@ class JwtAuthHelper
         'sub' => $decodedRefreshToken->sub,
         'name' => $decodedRefreshToken->name,
         'iat' => time(),
-        'exp' => time()+10,
+        'exp' => time() + (60 * 60 * 24),
       ];
 
       $newAccessToken = self::generateJWTAccessToken($newAccessTokenPayload);

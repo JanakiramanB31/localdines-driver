@@ -60,10 +60,10 @@ class DeliveryController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
-      ], 400);
+      ], 404);
     }
 
     $userData->duty_status = $request->duty_status == "on" ? true : false;
@@ -100,7 +100,7 @@ class DeliveryController extends Controller
     $userId = $request->auth->sub;
 
     $assignedOrders = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
-    ->where('order_status', 'accepted')->get();
+    ->whereIn('order_status', ['accepted', 'collected'])->get();
 
     if($assignedOrders->isEmpty()) {
       return response()->json([
@@ -111,7 +111,7 @@ class DeliveryController extends Controller
     }
 
     $updatedOrderData = $assignedOrders->map(function($assignedOrder) {
-      $orderData = $this->getOrderDetailsForNotification($assignedOrder->order_id, false, 'accepted');
+      $orderData = $this->getOrderDetailsForNotification($assignedOrder->order_id, false);
       if ($orderData) {
         $orderData['order_status'] = $assignedOrder->order_status;
       }
@@ -159,14 +159,14 @@ class DeliveryController extends Controller
     ]);
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
      
     if(!$orderData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'Order Not Found',
-      ], 200);
+      ], 404);
     }
 
     $orderData->order_status = $request->order_status;
@@ -216,10 +216,10 @@ class DeliveryController extends Controller
     
     if(!$orderData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'Order Not Found',
-      ], 200);
+      ], 404);
     }
 
     $phoneNumber = $orderData->phone_no;
@@ -274,24 +274,24 @@ class DeliveryController extends Controller
     
     if(!$orderData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'Order Not Found',
-      ], 200);
+      ], 404);
     }
 
     if($orderData->order_status == 'delivered') {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 409,
+        'success' => false,
         'message' => 'Order Already Delivered',
-      ], 200);
+      ], 409);
     }
 
     if($orderData->d_otp != $request->otp) {
       return response()->json([
         'code' => 400,
-        'success' => true,
+        'success' => false,
         'message' => 'Invalid OTP',
       ], 400);
     }
@@ -333,10 +333,10 @@ class DeliveryController extends Controller
 
     if($orderHistory->isEmpty()) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'No Orders Found',
-      ], 200);
+      ], 404);
     }
 
     $updatedOrderData = $orderHistory->map(function($historyOrder) {
@@ -441,13 +441,9 @@ class DeliveryController extends Controller
    *     )
    * )
    */
-  public function getOrderDetails(Request $request) {
-    $this->validate($request, [
-      'order_id' => 'required|integer',
-    ]);
-
+  public function getOrderDetails(Request $request, $order_id) {
     $userId = $request->auth->sub;
-    $orderId = $request->order_id;
+    $orderId = $order_id;
 
     // Check if user exists
     $partner = FoodDeliveryPartner::find($userId);
@@ -682,24 +678,24 @@ class DeliveryController extends Controller
       ], 404);
     }
 
-    if ($partnerOrder->order_status == 'collected' || $partnerOrder->order_status == 'delivered') {
+    if (in_array($partnerOrder->order_status, ['collected', 'delivered'])) {
       return response()->json([
-        'code' => 400,
-        'success' => false,
-        'message' => 'Order cannot be rejected as it\'s already in progress',
-      ], 400);
+          'code' => 409,
+          'success' => false,
+          'message' => "Order cannot be rejected as it's already in progress or completed.",
+      ], 409);
     }
 
     if ($partnerOrder->order_status == 'rejected') {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 409,
+        'success' => false,
         'message' => 'Order already rejected by you',
         'data' => [
           'order_id' => $orderId,
           'rejected_at' => $partnerOrder->updated_at
         ]
-      ], 200);
+      ], 409);
     }
 
     $partnerOrder->order_status = 'rejected';
@@ -941,7 +937,6 @@ class DeliveryController extends Controller
         }
         
         $partnerTakenOrder = $partnerTakenOrderQuery->first();
-        
         if ($partnerTakenOrder) {
           $partner = FoodDeliveryPartner::find($partnerTakenOrder->user_id);
           if ($partner) {

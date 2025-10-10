@@ -35,34 +35,34 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
 
     if ($userData->admin_approval == "rejected" ) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User Rejected by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($userData->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($userData->is_active == 0 ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User status is Inactive'
-      ], 401);
+      ], 403);
     }
 
     $data = $userData->toArray();
@@ -101,35 +101,35 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
 
     if ($userData->admin_approval == "rejected" ) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User Rejected by admin'
-      ], 401);
+      ], 403);
     }
 
 
     if ($userData->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($userData->is_active == 0 ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User status is Inactive'
-      ], 401);
+      ], 403);
     }
 
     $dutyStatus = $userData->duty_status == true ? "online" : "offline";
@@ -152,8 +152,8 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
@@ -359,18 +359,18 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
 
     if ($userData->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     $deliveryPartnerBankAccInfo = new FoodDeliveryPartnerBankAccInformation();
@@ -398,34 +398,34 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
 
     if ($userData->admin_approval == "rejected" ) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User Rejected by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($userData->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($userData->is_active == 0 ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User status is Inactive'
-      ], 401);
+      ], 403);
     }
 
     $bankAccData = FoodDeliveryPartnerBankAccInformation::where('partner_id', $userId)->first();
@@ -553,18 +553,18 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
 
     if ($userData->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     $deliveryPartnerOtherInfo = new FoodDeliveryPartnerOtherInformation();
@@ -670,34 +670,34 @@ class ProfileController extends Controller
 
     if(!$userData) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 404,
+        'success' => false,
         'message' => 'User Not Found',
       ], 404);
     }
 
     if ($userData->admin_approval == "rejected" ) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User Rejected by admin'
       ], 401);
     }
 
     if ($userData->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($userData->is_active == 0 ) {
       return response()->json([
-        'code' => 401,
-        'success' => true,
+        'code' => 403,
+        'success' => false,
         'message' => 'User status is Inactive'
-      ], 401);
+      ], 403);
     }
 
     $otherInfo = FoodDeliveryPartnerOtherInformation::where('partner_id', $userId)->first();
@@ -858,30 +858,30 @@ class ProfileController extends Controller
 
     if ($deliveryPartner->admin_approval != "accepted" ) {
       return response()->json([
-        'code' => 401,
+        'code' => 403,
         'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     $checkEmailExistence = FoodDeliveryPartner::where('email', $request->email)->where('id', '!=', $userId)->first();
     
     if ($checkEmailExistence) {
       return response()->json([
-        'code' => 400,
+        'code' => 409,
         'success' => false,
         'message' => 'Email already taken by another user',
-      ], 400);
+      ], 409);
     }
 
     $checkPhoneExistence = FoodDeliveryPartner::where('phone_number', $request->phone_number)->where('id', '!=', $userId)->first();
     
     if ($checkPhoneExistence) {
       return response()->json([
-        'code' => 400,
+        'code' => 409,
         'success' => false,
         'message' => 'Phone number already taken by another user',
-      ], 400);
+      ], 409);
     }
 
     $deliveryPartner->title = $request->title ?? $deliveryPartner->title;

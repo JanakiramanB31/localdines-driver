@@ -208,18 +208,18 @@ class AuthController extends Controller
 
     if ($deliveryPartner->admin_approval == "pending") {
       return response()->json([
-        'code' => 401,
+        'code' => 403,
         'success' => false,
         'message' => 'User not approved by admin'
-      ], 401);
+      ], 403);
     }
 
     if ($deliveryPartner->admin_approval == "rejected") {
       return response()->json([
-        'code' => 401,
+        'code' => 403,
         'success' => false,
         'message' => 'User request was rejected by the admin'
-      ], 401);
+      ], 403);
     }
     
     $accessTokenPayload = [
@@ -227,7 +227,7 @@ class AuthController extends Controller
       'sub' => $deliveryPartner->id,
       'name' => $deliveryPartner->name,
       'iat' => time(),
-      'exp' => time()+ (10* 60),
+      'exp' => time() + (60 * 60 * 24),
     ];
 
     $refreshTokenPayload = [
@@ -235,7 +235,7 @@ class AuthController extends Controller
       'sub' => $deliveryPartner->id,
       'name' => $deliveryPartner->name,
       'iat' => time(),
-      'exp' => time()+ (60 * 60 * 24 * 30),
+      'exp' => time() + (60 * 60 * 24 * 30),
     ];
     
     $accessToken = JwtAuthHelper::generateJWTAccessToken($accessTokenPayload);

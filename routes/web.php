@@ -61,7 +61,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
       $router->get('/assigned', 'DeliveryController@fetchAssignedOrder');
 
       /* Fetching Order Details Route */
-      $router->post('/details', 'DeliveryController@getOrderDetails');
+      $router->get('/details/{order_id}', 'DeliveryController@getOrderDetails');
 
       /* Updating Order Status Route */
       $router->post('/status', 'DeliveryController@updateOrderStatus');
