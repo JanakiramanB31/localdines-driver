@@ -59,6 +59,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
   /* Send Order Notification to Online Partners - No Auth Required */
   $router->get('/order/send-notification', 'DeliveryController@sendOrderNotification');
 
+  /* Auto Send Notifications for All Pending Orders - No Auth Required */
+  $router->get('/order/send-notifications/pending', 'DeliveryController@autoSendPendingNotifications');
+
   $router->group(['middleware' => 'auth'], function () use ($router) {
     
     /* Dashboard Route */

@@ -20,7 +20,7 @@ class DeliveryController extends Controller
    */
   public function __construct()
   {
-    $this->middleware('auth', ['except' => ['sendOrderNotification']]);
+    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications']]);
   }
 
   /**
@@ -1237,5 +1237,179 @@ class DeliveryController extends Controller
 
   private function base64UrlEncode($data) {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+  }
+
+  /**
+   * @OA\Get(
+   *     path="/auto-send-pending-notifications",
+   *     summary="Automatically send notifications for all non-accepted orders to non-rejected partners",
+   *     tags={"Admin"},
+   *     @OA\Response(
+   *         response=200,
+   *         description="Notifications sent successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Notifications sent for X pending orders"),
+   *             @OA\Property(property="data", type="object",
+   *                 @OA\Property(property="pending_orders_count", type="integer", example=5),
+   *                 @OA\Property(property="total_notifications_sent", type="integer", example=25),
+   *                 @OA\Property(property="orders_processed", type="array", @OA\Items(type="object"))
+   *             )
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="No pending orders found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="No pending orders found")
+   *         )
+   *     )
+   * )
+   */
+  public function autoSendPendingNotifications(Request $request) {
+    // Get today's orders that are in pending status
+    $pendingOrders = DB::table('food_delivery_orders')
+      ->where('type', 'delivery')
+      ->where('status', 'pending')
+      ->whereDate('created', Carbon::today())
+      ->select('id', 'order_id')
+      ->get();
+
+    if ($pendingOrders->isEmpty()) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'No pending orders found'
+      ], 404);
+    }
+
+    $ordersProcessed = [];
+    $totalNotificationsSent = 0;
+    $totalNotificationsFailed = 0;
+
+    foreach ($pendingOrders as $order) {
+      $orderId = $order->id;
+
+      // Get order details
+      $orderData = $this->getOrderDetailsForNotification($orderId);
+
+      if (!$orderData) {
+        $ordersProcessed[] = [
+          'order_id' => $orderId,
+          'status' => 'failed',
+          'reason' => 'Order details not found',
+          'partners_notified' => 0
+        ];
+        continue;
+      }
+
+      // Check if order is already accepted by someone
+      $acceptedOrder = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
+        ->where('order_status', 'accepted')
+        ->first();
+
+      if ($acceptedOrder) {
+        $ordersProcessed[] = [
+          'order_id' => $orderId,
+          'order_number' => $order->order_id,
+          'status' => 'skipped',
+          'reason' => 'Order already accepted',
+          'partners_notified' => 0
+        ];
+        continue;
+      }
+
+      // Get partners who have previously rejected this order
+      $rejectedPartnerIds = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
+        ->where('order_status', 'rejected')
+        ->pluck('user_id')
+        ->toArray();
+
+      // Get partners who are currently busy with accepted or collected orders
+      $busyPartnerIds = FoodDeliveryPartnerTakenOrder::whereIn('order_status', ['accepted', 'collected'])
+        ->pluck('user_id')
+        ->unique()
+        ->toArray();
+
+      // Merge rejected and busy partner IDs
+      $excludedPartnerIds = array_unique(array_merge($rejectedPartnerIds, $busyPartnerIds));
+
+      // Get online, approved partners with FCM tokens, excluding rejected and busy partners
+      $eligiblePartners = FoodDeliveryPartner::where('duty_status', true)
+        ->where('admin_approval', 'accepted')
+        ->where('is_active', 1)
+        ->whereNotNull('fcm_token')
+        ->whereNotIn('id', $excludedPartnerIds)
+        ->get();
+
+      if ($eligiblePartners->isEmpty()) {
+        $ordersProcessed[] = [
+          'order_id' => $orderId,
+          'order_number' => $order->order_id,
+          'status' => 'no_partners',
+          'reason' => 'No eligible partners available',
+          'rejected_count' => count($rejectedPartnerIds),
+          'busy_partners_count' => count($busyPartnerIds),
+          'partners_notified' => 0
+        ];
+        continue;
+      }
+
+      // Send notifications to all eligible partners
+      $partnersNotified = 0;
+      $partnersFailed = 0;
+      $partnerResults = [];
+
+      foreach ($eligiblePartners as $partner) {
+        $message = 'New order available for pickup';
+        $result = $this->sendPushNotification($partner, $orderId, $message, $orderData);
+
+        $partnerName = trim($partner->f_name . " " . $partner->m_name . " " . $partner->s_name);
+
+        if ($result['success']) {
+          $partnersNotified++;
+          $totalNotificationsSent++;
+        } else {
+          $partnersFailed++;
+          $totalNotificationsFailed++;
+        }
+
+        $partnerResults[] = [
+          'partner_id' => $partner->id,
+          'partner_name' => $partnerName,
+          'status' => $result['success'] ? 'sent' : 'failed',
+          'error' => $result['error'] ?? null
+        ];
+      }
+
+      $ordersProcessed[] = [
+        'order_id' => $orderId,
+        'order_number' => $order->order_id,
+        'status' => 'processed',
+        'partners_notified' => $partnersNotified,
+        'partners_failed' => $partnersFailed,
+        'rejected_count' => count($rejectedPartnerIds),
+        'busy_partners_count' => count($busyPartnerIds),
+        'partner_results' => $partnerResults
+      ];
+    }
+
+    $successfulOrders = collect($ordersProcessed)->where('status', 'processed')->count();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => "Notifications sent for {$successfulOrders} pending orders",
+      'data' => [
+        'pending_orders_count' => $pendingOrders->count(),
+        'orders_successfully_processed' => $successfulOrders,
+        'total_notifications_sent' => $totalNotificationsSent,
+        'total_notifications_failed' => $totalNotificationsFailed,
+        'orders_processed' => $ordersProcessed
+      ]
+    ], 200);
   }
 }

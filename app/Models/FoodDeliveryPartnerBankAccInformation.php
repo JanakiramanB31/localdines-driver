@@ -12,17 +12,14 @@ class FoodDeliveryPartnerBankAccInformation extends Model
    *
    * @var array
    */
-  // protected $fillable = [
-  //   'name',
-  //   'phone_number',
-  //   'email',
-  //   'password',
-  //   'gender',
-  //   'vehicle_name',
-  //   'vehicle_number',
-  //   'national_id',
-  //   'address'
-  // ];
+  protected $fillable = [
+    'name',
+    'partner_id',
+    'acc_number',
+    'sort_code',
+    'is_account_in_your_name',
+    'name_on_the_account'
+  ];
 
   /**
    * The attributes excluded from the model's JSON form.

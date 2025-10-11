@@ -67,6 +67,16 @@ class ProfileController extends Controller
 
     $data = $userData->toArray();
 
+    $address = FoodDeliveryPartnerAddress::where('partner_id', $userId)->first();
+    
+    unset(
+      $address['id'],
+      $address['partner_id'],
+      $address['is_active'], 
+      $address['created_at'],
+      $address['updated_at']
+    );
+
     $documents = FoodDeliveryPartnerDocument::select('doc_type', 'doc_number', 'doc_expiry', 'doc_url')
     ->where('partner_id', $userId)->get()
      ->map(function ($doc) {
@@ -77,12 +87,19 @@ class ProfileController extends Controller
     });
 
 
-    unset($data['admin_approval'], $data['is_active'], $data['updated_at'], $data['approved_at']);
+    unset(
+      $data['admin_approval'],
+      $data['is_active'], 
+      $data['updated_at'], 
+      $data['approved_at'],
+      $data['fcm_token']
+    );
     $data['duty_status'] = $data['duty_status'] == 1 ? "online" : "offline";
     $data['is_non_british'] = $data['is_non_british'] == 1 ? true : false;
     $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
     unset($data['created_at']);
 
+    $data['address_info'] = $address;
     $data['documents'] = $documents;
 
     return response()->json([
@@ -373,14 +390,18 @@ class ProfileController extends Controller
       ], 403);
     }
 
-    $deliveryPartnerBankAccInfo = new FoodDeliveryPartnerBankAccInformation();
-    $deliveryPartnerBankAccInfo->partner_id = $userId;
-    $deliveryPartnerBankAccInfo->name = $request->name;
-    $deliveryPartnerBankAccInfo->acc_number = $request->acc_number;
-    $deliveryPartnerBankAccInfo->sort_code = $request->sort_code;
-    $deliveryPartnerBankAccInfo->is_account_in_your_name  = $request->is_account_in_your_name;
-    $deliveryPartnerBankAccInfo->name_on_the_account  = $request->name_on_the_account;
-    $deliveryPartnerBankAccInfo->save();
+    // Update existing record or create new one
+    FoodDeliveryPartnerBankAccInformation::updateOrCreate(
+      ['partner_id' => $userId],
+      [
+        'partner_id' => $userId,
+        'name' => $request->name,
+        'acc_number' => $request->acc_number,
+        'sort_code' => $request->sort_code,
+        'is_account_in_your_name' => $request->is_account_in_your_name,
+        'name_on_the_account' => $request->name_on_the_account
+      ]
+    );
 
     return response()->json([
       'code' => 200,
@@ -597,7 +618,7 @@ class ProfileController extends Controller
         $document = $request->file("docs.$index.doc_url");
         $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
 
-        $uploadPath = base_path("public/images/users/$userId");
+        $uploadPath = base_path("public/users/$userId");
         // echo $uploadPath;  
 
         if (!file_exists($uploadPath)) {
