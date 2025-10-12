@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerAddress;
 use App\Models\FoodDeliveryPartnerBankAccInformation;
 use App\Models\FoodDeliveryPartnerDocument;
-use App\Models\FoodDeliveryPartnerKinInformation;
 use App\Models\FoodDeliveryPartnerOtherInformation;
-use App\Models\FoodDeliveryPartnersTakenOrder;
 use App\Models\FoodDeliveryPartnerUserReference;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -28,42 +25,15 @@ class ProfileController extends Controller
   }
 
   public function getProfileInfo(Request $request) {
-    
+
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence, admin approval, and active status
+    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
-
-    if ($userData->admin_approval == "rejected" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User Rejected by admin'
-      ], 403);
-    }
-
-    if ($userData->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
-    }
-
-    if ($userData->is_active == 0 ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User status is Inactive'
-      ], 403);
-    }
+    $userData = $validation['user'];
 
     $data = $userData->toArray();
 
@@ -111,43 +81,15 @@ class ProfileController extends Controller
   }
 
   public function getDutyStatus(Request $request) {
-    
+
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence, admin approval, and active status
+    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
-
-    if ($userData->admin_approval == "rejected" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User Rejected by admin'
-      ], 403);
-    }
-
-
-    if ($userData->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
-    }
-
-    if ($userData->is_active == 0 ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User status is Inactive'
-      ], 403);
-    }
+    $userData = $validation['user'];
 
     $dutyStatus = $userData->duty_status == true ? "online" : "offline";
 
@@ -165,15 +107,12 @@ class ProfileController extends Controller
 
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Check if user exists only (no approval check for account status)
+    $validation = UserValidationHelper::checkUserExists($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
+    $userData = $validation['user'];
 
     $data = $userData->toArray();
 
@@ -372,22 +311,10 @@ class ProfileController extends Controller
 
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
-    }
-
-    if ($userData->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
+    // Check if user is pending (only pending users can update bank info)
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
 
     // Update existing record or create new one
@@ -412,41 +339,13 @@ class ProfileController extends Controller
   }
 
   public function GetBankAccInfo(Request $request) {
-    
+
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
-    }
-
-    if ($userData->admin_approval == "rejected" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User Rejected by admin'
-      ], 403);
-    }
-
-    if ($userData->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
-    }
-
-    if ($userData->is_active == 0 ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User status is Inactive'
-      ], 403);
+    // Validate user existence, admin approval, and active status
+    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
 
     $bankAccData = FoodDeliveryPartnerBankAccInformation::where('partner_id', $userId)->first();
@@ -538,14 +437,6 @@ class ProfileController extends Controller
    */
 
   public function updateProfileInfo(Request $request) {
-    //  dd([
-    //     'all'   => $request->all(),
-    //     'files' => $request->file('docs.0.doc_url'),
-    //     'ab' => $request->file('a'),
-    //     'hasFiles' => $request->hasFile('docs.0.doc_url'),
-    //     'a' => $request->hasFile('a'),
-    // ]);
-    // exit;
     $this->validate($request, [
       'requires_work_permit' => 'required|boolean',
       /* Documents array validation */
@@ -570,22 +461,10 @@ class ProfileController extends Controller
 
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
-    }
-
-    if ($userData->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
+    // Check if user is pending (only pending users can update profile)
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
 
     $deliveryPartnerOtherInfo = new FoodDeliveryPartnerOtherInformation();
@@ -687,38 +566,10 @@ class ProfileController extends Controller
 
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
-    }
-
-    if ($userData->admin_approval == "rejected" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User Rejected by admin'
-      ], 401);
-    }
-
-    if ($userData->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
-    }
-
-    if ($userData->is_active == 0 ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User status is Inactive'
-      ], 403);
+    // Validate user existence, admin approval, and active status
+    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
 
     $otherInfo = FoodDeliveryPartnerOtherInformation::where('partner_id', $userId)->first();
@@ -867,23 +718,12 @@ class ProfileController extends Controller
 
     $userId = $request->auth->sub;
 
-    $deliveryPartner = FoodDeliveryPartner::find($userId);
-
-    if(!$deliveryPartner) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Check if user is pending (only pending users can update personal info)
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
-
-    if ($deliveryPartner->admin_approval != "accepted" ) {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
-    }
+    $deliveryPartner = $validation['user'];
 
     $checkEmailExistence = FoodDeliveryPartner::where('email', $request->email)->where('id', '!=', $userId)->first();
     

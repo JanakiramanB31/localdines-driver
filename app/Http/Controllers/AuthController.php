@@ -4,12 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Helpers\JwtAuthHelper;
 use App\Helpers\MailHelper;
+use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerAddress;
-use App\Models\FoodDeliveryPartnerBankAccInfo;
-use App\Models\FoodDeliveryPartnerDocument;
-use App\Models\FoodDeliveryPartnerKinInfo;
-use App\Models\FoodDeliveryPartnerOtherInfo;
 use App\Models\FoodDeliveryPartnerAuthOtp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -207,20 +204,10 @@ class AuthController extends Controller
       ], 400);
     }
 
-    if ($deliveryPartner->admin_approval == "pending") {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User not approved by admin'
-      ], 403);
-    }
-
-    if ($deliveryPartner->admin_approval == "rejected") {
-      return response()->json([
-        'code' => 403,
-        'success' => false,
-        'message' => 'User request was rejected by the admin'
-      ], 403);
+    // Check admin approval status
+    $approvalCheck = UserValidationHelper::checkUserExists($deliveryPartner);
+    if (!$approvalCheck['success']) {
+      return $approvalCheck['response'];
     }
     
     $accessTokenPayload = [

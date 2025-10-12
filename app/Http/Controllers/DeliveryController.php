@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryOrder;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerTakenOrder;
@@ -56,15 +57,12 @@ class DeliveryController extends Controller
 
     $userId = $request->auth->sub;
 
-    $userData = FoodDeliveryPartner::find($userId);
-
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
+    $userData = $validation['user'];
 
     $userData->duty_status = $request->duty_status == "on" ? true : false;
     $userData->save();
@@ -98,6 +96,12 @@ class DeliveryController extends Controller
 
   public function fetchAssignedOrder(Request $request) {
     $userId = $request->auth->sub;
+
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
+    }
 
     $assignedOrders = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
     ->whereIn('order_status', ['accepted', 'collected'])->get();
@@ -158,6 +162,14 @@ class DeliveryController extends Controller
       'order_status' => 'required|in:collected'
     ]);
 
+    $userId = $request->auth->sub;
+
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
+    }
+
     $orderID = $request->order_id;
     $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
      
@@ -210,6 +222,14 @@ class DeliveryController extends Controller
     $this->validate($request,[
       'order_id' => 'required',
     ]);
+
+    $userId = $request->auth->sub;
+
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
+    }
 
     $orderID = $request->order_id;
     $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
@@ -269,6 +289,14 @@ class DeliveryController extends Controller
       'otp' => 'required|min:4'
     ]);
 
+    $userId = $request->auth->sub;
+
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
+    }
+
     $orderID = $request->order_id;
     $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
     
@@ -327,6 +355,12 @@ class DeliveryController extends Controller
 
   public function orderHistory(Request $request) {
     $userId = $request->auth->sub;
+
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
+    }
 
     $orderHistory = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
     ->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
@@ -445,14 +479,10 @@ class DeliveryController extends Controller
     $userId = $request->auth->sub;
     $orderId = $order_id;
 
-    // Check if user exists
-    $partner = FoodDeliveryPartner::find($userId);
-    if (!$partner) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
         
     $orderData = $this->getOrderDetailsForNotification($orderId, true);
@@ -527,14 +557,10 @@ class DeliveryController extends Controller
     $userId = $request->auth->sub;
     $orderId = $request->order_id;
 
-    // Check if user exists
-    $partner = FoodDeliveryPartner::find($userId);
-    if (!$partner) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
 
     // Check if order exists
@@ -658,13 +684,10 @@ class DeliveryController extends Controller
     $userId = $request->auth->sub;
     $orderId = $request->order_id;
 
-    $partner = FoodDeliveryPartner::find($userId);
-    if (!$partner) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
 
     $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
@@ -739,15 +762,13 @@ class DeliveryController extends Controller
     ]);
 
     $userId = $request->auth->sub;
-    $userData = FoodDeliveryPartner::find($userId);
 
-    if(!$userData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'User Not Found',
-      ], 404);
+    // Validate user existence and admin approval
+    $validation = UserValidationHelper::validateUserAndApproval($userId);
+    if (!$validation['success']) {
+      return $validation['response'];
     }
+    $userData = $validation['user'];
 
     $userData->fcm_token = $request->fcm_token;
     $userData->save();
