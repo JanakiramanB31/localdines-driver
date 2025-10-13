@@ -111,6 +111,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     /* Profile Routes */
     $router->group(['prefix' => 'profile'], function () use ($router) {
 
+      /* Delete User Document */
+      $router->delete('/document/{id}', 'ProfileController@deleteUserDocument');
+
       /* Retrieve Profile Info */
       $router->get('/', 'ProfileController@getProfileInfo');
 

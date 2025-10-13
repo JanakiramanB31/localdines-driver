@@ -3,8 +3,6 @@
 namespace App\Helpers;
 
 use App\Models\FoodDeliveryPartner;
-use App\Models\FoodDeliveryPartnerTakenOrder;
-use Illuminate\Support\Facades\DB;
 
 class UserValidationHelper
 {
@@ -108,7 +106,7 @@ class UserValidationHelper
    * @param int $userId The user ID to check
    * @return array Returns ['success' => bool, 'user' => User|null, 'response' => JsonResponse|null]
    */
-  public static function checkUserForProfileUpdate($userId)
+  public static function checkUserForProfileUpdate($userId, $checkAdminApproval = true)
   {
     // First check if user exists, not rejected, and is active
     $validation = self::checkUserExists($userId);
@@ -119,7 +117,7 @@ class UserValidationHelper
     $user = $validation['user'];
 
     // Check if user is already accepted by admin
-    if ($user->admin_approval == "accepted") {
+    if ($checkAdminApproval && $user->admin_approval == "accepted") {
       return [
         'success' => false,
         'user' => $user,

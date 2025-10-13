@@ -29,7 +29,7 @@ class ProfileController extends Controller
     $userId = $request->auth->sub;
 
     // Validate user existence, admin approval, and active status
-    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId, false);
     if (!$validation['success']) {
       return $validation['response'];
     }
@@ -47,7 +47,7 @@ class ProfileController extends Controller
       $address['updated_at']
     );
 
-    $documents = FoodDeliveryPartnerDocument::select('doc_type', 'doc_number', 'doc_expiry', 'doc_url')
+    $documents = FoodDeliveryPartnerDocument::select('id', 'doc_type', 'doc_number', 'doc_expiry', 'doc_url')
     ->where('partner_id', $userId)->get()
      ->map(function ($doc) {
         $doc->doc_expiry = $doc->doc_expiry 
@@ -77,6 +77,35 @@ class ProfileController extends Controller
       'success' => true,
       'message' => 'Profile Info retrieved Successfully',
       'data' => $data
+    ], 200);
+  }
+
+  public function deleteUserDocument(Request $request, $id) {
+    $userId = $request->auth->sub;
+    $docId = $id;
+
+    // Validate user existence, admin approval, and active status
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId, true);
+    if (!$validation['success']) {
+      return $validation['response'];
+    }
+
+    $document = FoodDeliveryPartnerDocument::find($docId);
+
+    if (!$document || $document->partner_id !== $userId) {
+      return response()->json([
+        'code' => 403,
+        'success' => false,
+        'message' => 'This document does not belong to your account.'
+      ], 403);
+    }
+
+    $document->delete($docId);
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Document deleted successfully.'
     ], 200);
   }
 
@@ -343,7 +372,7 @@ class ProfileController extends Controller
     $userId = $request->auth->sub;
 
     // Validate user existence, admin approval, and active status
-    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId, false);
     if (!$validation['success']) {
       return $validation['response'];
     }
@@ -567,7 +596,7 @@ class ProfileController extends Controller
     $userId = $request->auth->sub;
 
     // Validate user existence, admin approval, and active status
-    $validation = UserValidationHelper::validateUserAndApproval($userId, true);
+    $validation = UserValidationHelper::checkUserForProfileUpdate($userId, false);
     if (!$validation['success']) {
       return $validation['response'];
     }
