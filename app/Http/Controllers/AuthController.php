@@ -205,7 +205,7 @@ class AuthController extends Controller
     }
 
     // Check admin approval status
-    $approvalCheck = UserValidationHelper::checkUserExists($deliveryPartner);
+    $approvalCheck = UserValidationHelper::checkUserExists($deliveryPartner->id);
     if (!$approvalCheck['success']) {
       return $approvalCheck['response'];
     }

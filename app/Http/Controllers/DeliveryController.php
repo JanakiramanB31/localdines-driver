@@ -99,10 +99,8 @@ class DeliveryController extends Controller
 
     // Validate user existence and admin approval
     $validation = UserValidationHelper::validateUserAndApproval($userId);
-    echo "Value of validation['success']: " .var_dump($validation['success']);
-    print_r(json_decode($validation['response']->getContent(), true));
-
-  
+    // echo "Value of validation['success']: " .var_dump($validation['success']);
+    // print_r(json_decode($validation['response']->getContent(), true));
 
     if (!$validation['success']) {
       return $validation['response'];

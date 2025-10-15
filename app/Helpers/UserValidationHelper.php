@@ -14,7 +14,7 @@ class UserValidationHelper
    */
   public static function checkUserExists($userId)
   {
-    $user = FoodDeliveryPartner::findOrFail($userId);
+    $user = FoodDeliveryPartner::where('id', $userId)->first();
 
     if (!$user) {
       return [
