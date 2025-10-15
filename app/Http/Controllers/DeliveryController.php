@@ -96,11 +96,11 @@ class DeliveryController extends Controller
 
   public function fetchAssignedOrder(Request $request) {
     $userId = $request->auth->sub;
-    echo "Type of userId: " . $userId . " (" . gettype($userId) . ")";
 
     // Validate user existence and admin approval
     $validation = UserValidationHelper::validateUserAndApproval($userId);
-    print_r($validation);
+    echo "Value of validation['success']: " .var_dump($validation['success']);
+    print_r(json_decode($validation['response']->getContent(), true));
 
   
 

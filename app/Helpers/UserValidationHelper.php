@@ -72,7 +72,6 @@ class UserValidationHelper
   {
     // First check if user exists, not rejected, and is active
     $validation = self::checkUserExists($userId);
-    print_r($validation);
     if (!$validation['success']) {
       return $validation;
     }
