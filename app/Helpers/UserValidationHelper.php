@@ -14,7 +14,7 @@ class UserValidationHelper
    */
   public static function checkUserExists($userId)
   {
-    $user = FoodDeliveryPartner::find($userId)->first();
+    $user = FoodDeliveryPartner::findOrFail($userId);
 
     if (!$user) {
       return [
@@ -72,6 +72,7 @@ class UserValidationHelper
   {
     // First check if user exists, not rejected, and is active
     $validation = self::checkUserExists($userId);
+    print_r($validation);
     if (!$validation['success']) {
       return $validation;
     }
