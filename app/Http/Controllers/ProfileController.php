@@ -47,6 +47,8 @@ class ProfileController extends Controller
       $address['updated_at']
     );
 
+    $data['is_admin_approved'] = $data['admin_approval'] == 'accepted' ? true : false;
+
     $documents = FoodDeliveryPartnerDocument::select('id', 'doc_type', 'doc_number', 'doc_expiry', 'doc_url')
     ->where('partner_id', $userId)->get()
      ->map(function ($doc) {
@@ -379,6 +381,8 @@ class ProfileController extends Controller
 
     $bankAccData = FoodDeliveryPartnerBankAccInformation::where('partner_id', $userId)->first();
 
+    $bankAccData['is_admin_approved'] = $validation['user']['admin_approval'] == 'accepted' ? true : false;
+
     unset(
       $bankAccData['id'],
       $bankAccData['is_active'], 
@@ -602,6 +606,8 @@ class ProfileController extends Controller
     }
 
     $otherInfo = FoodDeliveryPartnerOtherInformation::where('partner_id', $userId)->first();
+
+    $otherInfo['is_admin_approved'] = $validation['user']['admin_approval'] == 'accepted' ? true : false;
 
     unset(
       $otherInfo['id'],

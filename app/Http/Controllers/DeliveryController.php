@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants;
 use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryOrder;
 use App\Models\FoodDeliveryPartner;
@@ -1088,6 +1089,7 @@ class DeliveryController extends Controller
           $orderData['d_zip'] ?? ''
         ]);
         $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
+        $paymentStatus = $orderData['customer_paid']==1 ? "Paid" : "Unpaid";
 
         // Build full pickup address
         $pickupParts = array_filter([
@@ -1095,10 +1097,18 @@ class DeliveryController extends Controller
           $orderData['p_address'] ?? ''
         ]);
         $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
+        $distanceKm = $this->calculateDistanceKm(
+          $orderData['p_latitude'], 
+          $orderData['p_longitude'],
+          $orderData['d_latitude'], 
+          $orderData['d_longitude']
+        );
 
-        $notificationBody = "Order #{$orderData['order_id']} - {$itemCount} items - £{$orderData['total']} \n";
-        $notificationBody .= "From: {$pickupLocation}\n";
-        $notificationBody .= "To: {$deliveryLocation}";
+        // $notificationBody = "Order #{$orderData['order_id']} - {$itemCount} items - £{$orderData['total']} \n";
+        $notificationBody = "Pickup: {$pickupLocation}\n";
+        $notificationBody .= "Drop: {$deliveryLocation}\n";
+        $notificationBody .= "Distance: {$distanceKm}\n";
+        $notificationBody .= "Charge: " . Constants::CURRENCY_SYMBOL . " {$orderData['delivery_charges']}";
       }
 
       // FCM HTTP v1 API payload structure
@@ -1106,32 +1116,46 @@ class DeliveryController extends Controller
         'message' => [
           'token' => $fcmToken,
           'notification' => [
-            'title' => 'New Order Available!',
+            'title' => "🛵 New Order #{$orderData['order_id']}",
             'body' => $notificationBody
           ],
           'data' => [
-            'order_id' => (string) $orderId,
+            'order_id' => "{$orderId}",
             'type' => 'new_order',
-            'timestamp' => Carbon::now()->toISOString(),
-            'order_details' => json_encode($orderData)
+            'status' => $paymentStatus,
+            'p_addr' => "{$pickupLocation}",
+            'd_addr' => "{$deliveryLocation}",
+            'delivery_charge' => Constants::CURRENCY_SYMBOL . " {$orderData['delivery_charges']}",
+            'p_lat' => $orderData['p_latitude'],
+            'p_lng' => $orderData['p_longitude'],
+            'distance_km' => $distanceKm,
+            // 'order_details' => json_encode($orderData)
           ],
           'android' => [
+            'priority' => "HIGH",
             'notification' => [
-              'icon' => 'ic_notification',
-              'sound' => 'default',
-              'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+              'channel_id' => 'orders_channel',
+              'sound' => 'order_bell',
+              'tag' => "order-{$orderData['order_id']}"
             ]
           ],
           'apns' => [
+            'headers' => [
+              'apns-priority' => '1.0'
+            ],
             'payload' => [
               'aps' => [
-                'sound' => 'default'
+                'sound' => 'order_bell.wav',
+                'content-available' => 1
               ]
             ]
           ]
         ]
       ];
 
+      $this->pr($notificationData);
+      exit;
+      
       $headers = [
         'Authorization: Bearer ' . $accessToken,
         'Content-Type: application/json'
@@ -1436,4 +1460,30 @@ class DeliveryController extends Controller
       ]
     ], 200);
   }
+
+  public function calculateDistanceKm($lat1, $lon1, $lat2, $lon2) {
+    // Convert degrees to radians
+    $lat1 = deg2rad($lat1);
+    $lon1 = deg2rad($lon1);
+    $lat2 = deg2rad($lat2);
+    $lon2 = deg2rad($lon2);
+
+    // Haversine formula
+    $dLat = $lat2 - $lat1;
+    $dLon = $lon2 - $lon1;
+
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos($lat1) * cos($lat2) *
+         sin($dLon / 2) * sin($dLon / 2);
+
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+    // Earth's radius in kilometers
+    $earthRadiusKm = 6371;
+
+    $distance = $earthRadiusKm * $c;
+
+    return round($distance, 2);
+  }
+
 }
