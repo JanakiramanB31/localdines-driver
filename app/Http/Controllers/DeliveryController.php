@@ -866,6 +866,19 @@ class DeliveryController extends Controller
       ], 404);
     }
 
+    // Check if order is already accepted, collected, or delivered
+    $existingAssignment = FoodDeliveryPartnerTakenOrder::where('order_id', $order_id)
+      ->whereIn('order_status', ['accepted', 'collected', 'delivered'])
+      ->first();
+
+    if ($existingAssignment) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Order is already ' . $existingAssignment->order_status
+      ], 400);
+    }
+
     // Get partners who have previously rejected this order
     $rejectedPartnerIds = FoodDeliveryPartnerTakenOrder::where('order_id', $order_id)
     ->where('order_status', 'rejected')->pluck('user_id')->toArray();
@@ -1351,17 +1364,17 @@ class DeliveryController extends Controller
         continue;
       }
 
-      // Check if order is already accepted by someone
-      $acceptedOrder = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
-        ->where('order_status', 'accepted')
+      // Check if order is already accepted, collected, or delivered
+      $existingAssignment = FoodDeliveryPartnerTakenOrder::where('order_id', $orderId)
+        ->whereIn('order_status', ['accepted', 'collected', 'delivered'])
         ->first();
 
-      if ($acceptedOrder) {
+      if ($existingAssignment) {
         $ordersProcessed[] = [
           'order_id' => $orderId,
           'order_number' => $order->order_id,
           'status' => 'skipped',
-          'reason' => 'Order already accepted',
+          'reason' => 'Order is already ' . $existingAssignment->order_status,
           'partners_notified' => 0
         ];
         continue;
