@@ -1152,9 +1152,6 @@ class DeliveryController extends Controller
           ]
         ]
       ];
-
-      $this->pr($notificationData);
-      exit;
       
       $headers = [
         'Authorization: Bearer ' . $accessToken,
