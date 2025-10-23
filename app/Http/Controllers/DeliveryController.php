@@ -1120,15 +1120,15 @@ class DeliveryController extends Controller
             'body' => $notificationBody
           ],
           'data' => [
-            'order_id' => "{$orderId}",
+            'order_id' => (string)$orderId,
             'type' => 'new_order',
-            'status' => $paymentStatus,
-            'p_addr' => "{$pickupLocation}",
-            'd_addr' => "{$deliveryLocation}",
-            'delivery_charge' => Constants::CURRENCY_SYMBOL . " {$orderData['delivery_charges']}",
-            'p_lat' => $orderData['p_latitude'],
-            'p_lng' => $orderData['p_longitude'],
-            'distance_km' => $distanceKm,
+            'status' => (string)$paymentStatus,
+            'p_addr' => (string)$pickupLocation,
+            'd_addr' => (string)$deliveryLocation,
+            'delivery_charge' => (string)(Constants::CURRENCY_SYMBOL . " {$orderData['delivery_charges']}"),
+            'p_lat' => (string)$orderData['p_latitude'],
+            'p_lng' => (string)$orderData['p_longitude'],
+            'distance_km' => (string)$distanceKm,
             // 'order_details' => json_encode($orderData)
           ],
           'android' => [
