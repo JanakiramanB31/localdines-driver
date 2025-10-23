@@ -1141,7 +1141,7 @@ class DeliveryController extends Controller
           ],
           'apns' => [
             'headers' => [
-              'apns-priority' => '1.0'
+              'apns-priority' => '10'
             ],
             'payload' => [
               'aps' => [
