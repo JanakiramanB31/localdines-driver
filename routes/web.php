@@ -43,6 +43,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     /* Reset Password Route */
     $router->post('/reset-password', 'AuthController@ResetPassword');
 
+    /* Logout Route - Requires Authentication */
+    $router->post('/logout', ['middleware' => 'auth', 'uses' => 'AuthController@logout']);
+
   });
 
   /* Admin Routes */
@@ -63,7 +66,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
   $router->get('/order/send-notification/pending', 'DeliveryController@autoSendPendingNotifications');
 
   $router->group(['middleware' => 'auth'], function () use ($router) {
-    
+
     /* Dashboard Route */
     $router->get('/dashboard', 'HomeController@home');
     

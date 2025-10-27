@@ -533,6 +533,57 @@ class AuthController extends Controller
     ]);
   }
 
+  /**
+   * @OA\Post(
+   *     path="/logout",
+   *     summary="Logout user and set duty status to offline",
+   *     tags={"Authentication"},
+   *     security={{"bearerAuth":{}}},
+   *     @OA\Response(
+   *         response=200,
+   *         description="Logout Successful",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Logout Successful")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=401,
+   *         description="Unauthorized",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=401),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Unauthorized")
+   *         )
+   *     )
+   * )
+   */
+
+  public function logout(Request $request) {
+    $userId = $request->auth->sub;
+
+    $deliveryPartner = FoodDeliveryPartner::find($userId);
+
+    if (!$deliveryPartner) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'User not found'
+      ], 404);
+    }
+
+    // Set duty status to offline
+    $deliveryPartner->duty_status = false;
+    $deliveryPartner->save();
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'Logout Successful'
+    ], 200);
+  }
+
   public function verifyOTP(Request $request, $type) {
 
     $otpQuery = FoodDeliveryPartnerAuthOtp::query();
@@ -592,5 +643,5 @@ class AuthController extends Controller
       'message' => 'OTP Verified',
     ], 200);
   }
-    
+
 }

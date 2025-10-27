@@ -476,13 +476,13 @@ class ProfileController extends Controller
       'docs' => 'required|array',
       'docs.*.doc_type' => 'required|in:visa,passport,ni,license,sign',
       'docs.*.doc_number' => 'nullable|string',
-      'docs.*.doc_expiry' => 'nullable|date',
+      'docs.*.doc_expiry' => 'nullable|date|after:today',
       'docs.*.doc_url' => 'required|file|mimes:jpeg,png,jpg,svg,pdf|max:2048',
 
       'uses_car' => 'required|boolean',
       'uses_motorcycle' => 'required|boolean',
       'uses_bicycle' => 'required|boolean',
-    
+
       'has_motoring_convictions' => 'required_if:uses_car,true|required_if:uses_motorcycle,true|boolean',
 
       'is_uk_licence' => 'required|boolean',
@@ -498,6 +498,22 @@ class ProfileController extends Controller
     $validation = UserValidationHelper::checkUserForProfileUpdate($userId);
     if (!$validation['success']) {
       return $validation['response'];
+    }
+
+    // Additional validation for document expiry dates
+    if ($request->has('docs')) {
+      foreach ($request->docs as $index => $doc) {
+        if (isset($doc['doc_expiry'])) {
+          $expiryDate = Carbon::parse($doc['doc_expiry']);
+          if ($expiryDate->isPast()) {
+            return response()->json([
+              'code' => 422,
+              'success' => false,
+              'message' => "Document expiry date for {$doc['doc_type']} must be a future date"
+            ], 422);
+          }
+        }
+      }
     }
 
     $deliveryPartnerOtherInfo = new FoodDeliveryPartnerOtherInformation();
