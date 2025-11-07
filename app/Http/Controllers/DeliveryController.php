@@ -1128,10 +1128,10 @@ class DeliveryController extends Controller
       $notificationData = [
         'message' => [
           'token' => $fcmToken,
-          'notification' => [
-            'title' => "🛵 New Order #{$orderData['order_id']}",
-            'body' => $notificationBody
-          ],
+         // 'notification' => [
+         // 'title' => "🛵 New Order #{$orderData['order_id']}",
+         // 'body' => $notificationBody
+         // ],
           'data' => [
             'order_id' => (string)$orderId,
             'type' => 'new_order',
