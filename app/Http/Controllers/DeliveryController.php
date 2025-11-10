@@ -900,6 +900,12 @@ class DeliveryController extends Controller
       ], 404);
     }
 
+    $distanceKm = $this->calculateDistanceKm(
+      $orderData['p_latitude'], 
+      $orderData['p_longitude'],
+      $orderData['d_latitude'], 
+      $orderData['d_longitude']
+    );
     
     $partnersNotified = 0;
     $failedNotifications = 0;
@@ -938,7 +944,8 @@ class DeliveryController extends Controller
         'excluded_rejected_partners' => $totalRejected,
         'order_id' => $order_id,
         'order_details' => $orderData,
-        'notification_results' => $notificationResults
+        'notification_results' => $notificationResults,
+        'distanceKm'  => $distanceKm
       ]
     ], 200);
   }
