@@ -1012,7 +1012,7 @@ class DeliveryController extends Controller
 
       $latitude = $order->d_latitude;
       $longitude = $order->d_longitude;
-      $zipCode = $order->d_zip;
+      $zipCode = $order->post_code ?? $order->d_zip;
       if (is_null($latitude) || is_null($longitude)) {
         if ($zipCode !== null) {
           $locationCoordinates = $this->getCoordinatesFromZipCode($zipCode);
