@@ -236,8 +236,8 @@ class DeliveryController extends Controller
     }
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
-    
+    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
+
     if(!$orderData) {
       return response()->json([
         'code' => 404,
@@ -302,7 +302,7 @@ class DeliveryController extends Controller
     }
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::find($orderID);
+    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
     
     if(!$orderData) {
       return response()->json([
@@ -899,13 +899,6 @@ class DeliveryController extends Controller
         'message' => $message
       ], 404);
     }
-
-    $distanceKm = $this->calculateDistanceKm(
-      $orderData['p_latitude'], 
-      $orderData['p_longitude'],
-      $orderData['d_latitude'], 
-      $orderData['d_longitude']
-    );
     
     $partnersNotified = 0;
     $failedNotifications = 0;
@@ -945,7 +938,6 @@ class DeliveryController extends Controller
         'order_id' => $order_id,
         'order_details' => $orderData,
         'notification_results' => $notificationResults,
-        'distanceKm'  => $distanceKm
       ]
     ], 200);
   }
