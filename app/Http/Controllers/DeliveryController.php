@@ -694,15 +694,34 @@ class DeliveryController extends Controller
       return $validation['response'];
     }
 
+    // Check if order exists in main orders table
+    $order = DB::table('food_delivery_orders')->where('id', $orderId)->first();
+    if (!$order) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found',
+      ], 404);
+    }
+
     $partnerOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
     ->where('order_id', $orderId)->first();
 
     if (!$partnerOrder) {
+      // Create new record with rejected status
+      $partnerOrder = new FoodDeliveryPartnerTakenOrder();
+      $partnerOrder->user_id = $userId;
+      $partnerOrder->order_id = $orderId;
+      $partnerOrder->order_status = 'rejected';
+      $partnerOrder->created_at = Carbon::now();
+      $partnerOrder->updated_at = Carbon::now();
+      $partnerOrder->save();
+
       return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'Order not found or not assigned to you',
-      ], 404);
+        'code' => 200,
+        'success' => true,
+        'message' => 'Order rejected successfully'
+      ], 200);
     }
 
     if (in_array($partnerOrder->order_status, ['collected', 'delivered'])) {

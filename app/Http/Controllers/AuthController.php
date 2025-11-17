@@ -118,7 +118,7 @@ class AuthController extends Controller
     $deliveryPartnerAddress = new FoodDeliveryPartnerAddress();
     $deliveryPartnerAddress->partner_id = $deliveryPartner->id;
     $deliveryPartnerAddress->home_no = $request->home_no;
-    $deliveryPartnerAddress->home_name = $request->home_no;
+    $deliveryPartnerAddress->home_name = $request->home_name;
     $deliveryPartnerAddress->street_name = $request->street_name;
     $deliveryPartnerAddress->city = $request->city;
     $deliveryPartnerAddress->county = $request->county;
