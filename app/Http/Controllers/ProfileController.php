@@ -776,24 +776,30 @@ class ProfileController extends Controller
     }
     $deliveryPartner = $validation['user'];
 
-    $checkEmailExistence = FoodDeliveryPartner::where('email', $request->email)->where('id', '!=', $userId)->first();
-    
-    if ($checkEmailExistence) {
-      return response()->json([
-        'code' => 409,
-        'success' => false,
-        'message' => 'Email already taken by another user',
-      ], 409);
+    // Only check email existence if it's being changed
+    if ($request->email && $request->email !== $deliveryPartner->email) {
+      $checkEmailExistence = FoodDeliveryPartner::where('email', $request->email)->where('id', '!=', $userId)->first();
+
+      if ($checkEmailExistence) {
+        return response()->json([
+          'code' => 409,
+          'success' => false,
+          'message' => 'Email already taken by another user',
+        ], 409);
+      }
     }
 
-    $checkPhoneExistence = FoodDeliveryPartner::where('phone_number', $request->phone_number)->where('id', '!=', $userId)->first();
-    
-    if ($checkPhoneExistence) {
-      return response()->json([
-        'code' => 409,
-        'success' => false,
-        'message' => 'Phone number already taken by another user',
-      ], 409);
+    // Only check phone existence if it's being changed
+    if ($request->phone_number && $request->phone_number !== $deliveryPartner->phone_number) {
+      $checkPhoneExistence = FoodDeliveryPartner::where('phone_number', $request->phone_number)->where('id', '!=', $userId)->first();
+
+      if ($checkPhoneExistence) {
+        return response()->json([
+          'code' => 409,
+          'success' => false,
+          'message' => 'Phone number already taken by another user',
+        ], 409);
+      }
     }
 
     $deliveryPartner->title = $request->title ?? $deliveryPartner->title;
