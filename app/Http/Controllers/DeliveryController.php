@@ -1078,7 +1078,7 @@ class DeliveryController extends Controller
         'd_address_2' => $order->d_address_2,
         'd_city' => $order->d_city,
         'd_state' => $order->d_state,
-        'd_zip' => $order->d_zip,
+        'd_zip' => $order->post_code ?? $order->d_zip,
         'd_notes' => $order->d_notes,
         'post_code' => $order->post_code,
         'subtotal' => $order->subtotal,
@@ -1128,7 +1128,7 @@ class DeliveryController extends Controller
           $orderData['d_address_1'] ?? '',
           $orderData['d_address_2'] ?? '',
           $orderData['d_city'] ?? '',
-          $orderData['d_zip'] ?? ''
+          $orderData['d_zip'] ?? $orderData['post_code']
         ]);
         $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
         $paymentStatus = $orderData['customer_paid']==1 ? "Paid" : "Unpaid";
@@ -1139,7 +1139,7 @@ class DeliveryController extends Controller
           $orderData['p_address'] ?? ''
         ]);
         $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
-        $distanceKm = $this->calculateDistanceKm(
+        $distanceMiles = $this->calculateDistanceMiles(
           $orderData['p_latitude'], 
           $orderData['p_longitude'],
           $orderData['d_latitude'], 
@@ -1149,7 +1149,7 @@ class DeliveryController extends Controller
         // $notificationBody = "Order #{$orderData['order_id']} - {$itemCount} items - £{$orderData['total']} \n";
         $notificationBody = "Pickup: {$pickupLocation}\n";
         $notificationBody .= "Drop: {$deliveryLocation}\n";
-        $notificationBody .= "Distance: {$distanceKm}\n";
+        $notificationBody .= "Distance: {$distanceMiles}\n";
         $notificationBody .= "Charge: " . " {$orderData['delivery_charges']}";
       }
 
@@ -1170,8 +1170,7 @@ class DeliveryController extends Controller
             'delivery_charge' => (string)$orderData['delivery_charges'],
             'p_lat' => (string)$orderData['p_latitude'],
             'p_lng' => (string)$orderData['p_longitude'],
-            'distance_km' => (string)$distanceKm,
-            // 'order_details' => json_encode($orderData)
+            'distance_miles' => (string)$distanceMiles,
           ],
           'android' => [
             'priority' => "HIGH",
@@ -1525,5 +1524,31 @@ class DeliveryController extends Controller
 
     return round($distance, 2);
   }
+
+  public function calculateDistanceMiles($lat1, $lon1, $lat2, $lon2) {
+    // Convert degrees to radians
+    $lat1 = deg2rad($lat1);
+    $lon1 = deg2rad($lon1);
+    $lat2 = deg2rad($lat2);
+    $lon2 = deg2rad($lon2);
+
+    // Haversine formula
+    $dLat = $lat2 - $lat1;
+    $dLon = $lon2 - $lon1;
+
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos($lat1) * cos($lat2) *
+         sin($dLon / 2) * sin($dLon / 2);
+
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+    // Earth's radius in miles
+    $earthRadiusMiles = 3959;
+
+    $distance = $earthRadiusMiles * $c;
+
+    return round($distance, 2);
+  }
+
 
 }
