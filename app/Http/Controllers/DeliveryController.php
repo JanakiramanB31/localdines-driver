@@ -1167,7 +1167,7 @@ class DeliveryController extends Controller
             'status' => (string)$paymentStatus,
             'p_addr' => (string)$pickupLocation,
             'd_addr' => (string)$deliveryLocation,
-            'delivery_charge' => (string)(Constants::CURRENCY_SYMBOL . " {$orderData['delivery_charges']}"),
+            'delivery_charge' => (string)$orderData['delivery_charges'],
             'p_lat' => (string)$orderData['p_latitude'],
             'p_lng' => (string)$orderData['p_longitude'],
             'distance_km' => (string)$distanceKm,
