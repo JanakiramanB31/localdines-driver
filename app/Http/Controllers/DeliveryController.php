@@ -1150,7 +1150,7 @@ class DeliveryController extends Controller
         $notificationBody = "Pickup: {$pickupLocation}\n";
         $notificationBody .= "Drop: {$deliveryLocation}\n";
         $notificationBody .= "Distance: {$distanceKm}\n";
-        $notificationBody .= "Charge: " . Constants::CURRENCY_SYMBOL . " {$orderData['delivery_charges']}";
+        $notificationBody .= "Charge: " . " {$orderData['delivery_charges']}";
       }
 
       // FCM HTTP v1 API payload structure
