@@ -70,8 +70,8 @@ class DeliveryController extends Controller
 
     if ($userData->duty_status == 1 && $request->duty_status == Constants::DUTY_STATUS['OFF'] && $assignedOrders->isNotEmpty()) {
       return response()->json([
-          'code' => 200,
-          'success' => true,
+          'code' => 400,
+          'success' => false,
           'message' => 'Please complete the assigned order before updating duty status to offline.',
       ], 200);
     }

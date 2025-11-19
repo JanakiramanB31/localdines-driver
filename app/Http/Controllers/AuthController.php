@@ -579,8 +579,8 @@ class AuthController extends Controller
 
     if ($deliveryPartner->duty_status == 1 && $assignedOrders->isNotEmpty()) {
       return response()->json([
-          'code' => 200,
-          'success' => true,
+          'code' => 400,
+          'success' => false,
           'message' => 'Please complete the assigned order before logging out',
       ], 200);
     }
