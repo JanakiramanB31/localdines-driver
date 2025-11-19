@@ -26,25 +26,23 @@ class AdminController extends Controller
 
     $deliveryPartner = FoodDeliveryPartner::find($request->user_id);
 
-    if ($deliveryPartner) {
-
-      $deliveryPartner->admin_approval = "accepted";
-      $deliveryPartner->approved_at = Carbon::now('UTC');;
-      $deliveryPartner->save();
-
+    if (!$deliveryPartner) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
-        'message' => 'User approved by admin'
-      ], 200);
+        'code' => 404,
+        'success' => false,
+        'message' => 'User not found'
+      ], 404);
     }
 
-    return response()->json([
-      'code' => 403,
-      'success' => false,
-      'message' => 'User not approved by admin'
-    ], 403);
+    $deliveryPartner->admin_approval = "accepted";
+    $deliveryPartner->approved_at = Carbon::now('UTC');;
+    $deliveryPartner->save();
 
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'User approved by admin'
+    ], 200);
   }
 
   public function rejectUser(Request $request) {
@@ -52,26 +50,24 @@ class AdminController extends Controller
       'user_id' => 'required',
     ]);
 
-    $deliveryPartner = FoodDeliveryPartner::where('id', $request->user_id)->first();
+    $deliveryPartner = FoodDeliveryPartner::find($request->user_id);
 
-    if ($deliveryPartner) {
-
-      $deliveryPartner->admin_approval = "rejected";
-      $deliveryPartner->save();
-
+    if (!$deliveryPartner) {
       return response()->json([
-        'code' => 200,
-        'success' => true,
-        'message' => 'User Rejected by admin'
-      ], 200);
+        'code' => 404,
+        'success' => false,
+        'message' => 'User not found'
+      ], 404);
     }
 
-    return response()->json([
-      'code' => 403,
-      'success' => false,
-      'message' => 'User not approved by admin'
-    ], 403);
+    $deliveryPartner->admin_approval = "rejected";
+    $deliveryPartner->save();
 
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => 'User Rejected by admin'
+    ], 200);
   }
     
 }

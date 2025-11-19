@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants;
 use App\Helpers\JwtAuthHelper;
 use App\Helpers\MailHelper;
 use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerAddress;
 use App\Models\FoodDeliveryPartnerAuthOtp;
+use App\Models\FoodDeliveryPartnerTakenOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -93,7 +95,6 @@ class AuthController extends Controller
       'city' => 'required',
       //'county' => 'required',
       'post_code' => 'required',
-      'home_phone' => 'required',
     ]);
 
     $deliveryPartner = new FoodDeliveryPartner();
@@ -571,6 +572,17 @@ class AuthController extends Controller
         'success' => false,
         'message' => 'User not found'
       ], 404);
+    }
+
+    $assignedOrders = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+      ->whereIn('order_status', ['accepted', 'collected'])->get();
+
+    if ($deliveryPartner->duty_status == 1 && $assignedOrders->isNotEmpty()) {
+      return response()->json([
+          'code' => 200,
+          'success' => true,
+          'message' => 'Please complete the assigned order before logging out',
+      ], 200);
     }
 
     // Set duty status to offline

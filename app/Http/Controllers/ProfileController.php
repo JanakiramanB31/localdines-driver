@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants;
 use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryPartner;
 use App\Models\FoodDeliveryPartnerAddress;
@@ -66,7 +67,7 @@ class ProfileController extends Controller
       $data['approved_at'],
       $data['fcm_token']
     );
-    $data['duty_status'] = $data['duty_status'] == 1 ? "online" : "offline";
+    $data['duty_status'] = $data['duty_status'] == 1 ? Constants::DUTY_STATUS['ONLINE'] : Constants::DUTY_STATUS['OFFLINE'];
     $data['is_non_british'] = $data['is_non_british'] == 1 ? true : false;
     $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
     unset($data['created_at']);
@@ -122,7 +123,7 @@ class ProfileController extends Controller
     }
     $userData = $validation['user'];
 
-    $dutyStatus = $userData->duty_status == true ? "online" : "offline";
+    $dutyStatus = $userData->duty_status == true ? Constants::DUTY_STATUS['ONLINE'] : Constants::DUTY_STATUS['OFFLINE'];
 
     return response()->json([
       'code' => 200,
@@ -160,7 +161,7 @@ class ProfileController extends Controller
       $data['dob'],
       $data['is_non_british']
     );
-    $data['duty_status'] = $data['duty_status'] == 1 ? "online" : "offline";
+    $data['duty_status'] = $data['duty_status'] == 1 ? Constants::DUTY_STATUS['ONLINE'] : Constants::DUTY_STATUS['OFFLINE'];
     $data['approved_at'] = $data['approved_at'] !== null ? Carbon::parse($data['approved_at'])->format('d-m-Y') : null;
     $data['acc_created_at'] = Carbon::parse($data['created_at'])->format('d-m-Y');
     unset($data['created_at'], $data['updated_at']);

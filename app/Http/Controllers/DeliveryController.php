@@ -53,7 +53,7 @@ class DeliveryController extends Controller
 
   public function dutyStatusUpdate(Request $request) {
     $this->validate($request, [
-      'duty_status' => 'required|in:on,off'
+      'duty_status' => 'required|in:' . Constants::DUTY_STATUS['ON'] . ',' . Constants::DUTY_STATUS['OFF']
     ]);
 
     $userId = $request->auth->sub;
@@ -65,7 +65,18 @@ class DeliveryController extends Controller
     }
     $userData = $validation['user'];
 
-    $userData->duty_status = $request->duty_status == "on" ? true : false;
+    $assignedOrders = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+    ->whereIn('order_status', ['accepted', 'collected'])->get();
+
+    if ($userData->duty_status == 1 && $request->duty_status == Constants::DUTY_STATUS['OFF'] && $assignedOrders->isNotEmpty()) {
+      return response()->json([
+          'code' => 200,
+          'success' => true,
+          'message' => 'Please complete the assigned order before updating duty status to offline.',
+      ], 200);
+    }
+
+    $userData->duty_status = $request->duty_status == Constants::DUTY_STATUS['ON'] ? true : false;
     $userData->save();
 
     return response()->json([
@@ -803,7 +814,7 @@ class DeliveryController extends Controller
     ], 200);
   }
 
-    /**
+  /**
    * @OA\Get(
    *     path="/send-order-notification",
    *     summary="Send new order notification to all online delivery partners",
