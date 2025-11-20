@@ -23,7 +23,7 @@ class DeliveryController extends Controller
    */
   public function __construct()
   {
-    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications', 'createOrderFireStoreDocument']]);
+    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications']]);
   }
 
   /**
@@ -907,7 +907,7 @@ class DeliveryController extends Controller
 
     // Get order details with pickup and delivery information
     $orderData = $this->getOrderDetailsForNotification($order_id);
-    
+
     if (!$orderData) {
       return response()->json([
         'code' => 404,
@@ -915,6 +915,46 @@ class DeliveryController extends Controller
         'message' => 'Order not found'
       ], 404);
     }
+
+    // Create Firestore document for live tracking
+    $pickupParts = array_filter([
+      $orderData['p_name'] ?? '',
+      $orderData['p_address'] ?? ''
+    ]);
+    $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
+
+    $deliveryParts = array_filter([
+      $orderData['d_address_1'] ?? '',
+      $orderData['d_address_2'] ?? '',
+      $orderData['d_city'] ?? '',
+      $orderData['d_zip'] ?? $orderData['post_code'] ?? ''
+    ]);
+    $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
+
+    $firestoreData = [
+      'order_id' => $order_id,
+      'status' => 'pending',
+      'driver_id' => null,
+      'pickup' => [
+        'lat' => (float)($orderData['p_latitude'] ?? 0),
+        'lng' => (float)($orderData['p_longitude'] ?? 0),
+        'location' => $pickupLocation
+      ],
+      'drop' => [
+        'lat' => (float)($orderData['d_latitude'] ?? 0),
+        'lng' => (float)($orderData['d_longitude'] ?? 0),
+        'location' => $deliveryLocation
+      ],
+      'driver_position' => [
+        'lat' => null,
+        'lng' => null,
+        'heading_deg' => null,
+        'speed_mps' => null
+      ],
+      'updated_at' => date('c')
+    ];
+
+    FirebaseHelper::createFirestoreDocument('orders_live', (string)$order_id, $firestoreData);
 
     // Check if order is already accepted, collected, or delivered
     $existingAssignment = FoodDeliveryPartnerTakenOrder::where('order_id', $order_id)
@@ -1292,119 +1332,6 @@ class DeliveryController extends Controller
         'orders_processed' => $ordersProcessed
       ]
     ], 200);
-  }
-
-  /**
-   * @OA\Get(
-   *     path="/order/live/create/{order_id}",
-   *     summary="Create a new live tracking document in Firestore",
-   *     description="Creates a new document in Firestore orders_live collection for real-time tracking",
-   *     tags={"Delivery"},
-   *     @OA\Parameter(
-   *         name="order_id",
-   *         in="path",
-   *         required=true,
-   *         description="The ID of the order to create tracking for",
-   *         @OA\Schema(type="integer", example=123)
-   *     ),
-   *     @OA\Response(
-   *         response=200,
-   *         description="Document created successfully",
-   *         @OA\JsonContent(
-   *             @OA\Property(property="code", type="integer", example=200),
-   *             @OA\Property(property="success", type="boolean", example=true),
-   *             @OA\Property(property="message", type="string", example="Live tracking document created successfully")
-   *         )
-   *     ),
-   *     @OA\Response(
-   *         response=400,
-   *         description="Failed to create document",
-   *         @OA\JsonContent(
-   *             @OA\Property(property="code", type="integer", example=400),
-   *             @OA\Property(property="success", type="boolean", example=false),
-   *             @OA\Property(property="message", type="string", example="Failed to create live tracking document")
-   *         )
-   *     )
-   * )
-   */
-  public function createOrderFireStoreDocument(Request $request, $order_id) {
-    $orderId = $order_id;
-
-    // Get order details
-    $orderData = $this->getOrderDetailsForNotification($orderId, true);
-
-    if (!$orderData) {
-      return response()->json([
-        'code' => 404,
-        'success' => false,
-        'message' => 'Order not found',
-      ], 404);
-    }
-
-    // $this->pr($orderData);
-    // exit;
-
-    // Build full pickup address
-    $pickupParts = array_filter([
-      $orderData['p_name'] ?? '',
-      $orderData['p_address'] ?? ''
-    ]);
-    $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
-
-    // Build full delivery address
-    $deliveryParts = array_filter([
-      $orderData['d_address_1'] ?? '',
-      $orderData['d_address_2'] ?? '',
-      $orderData['d_city'] ?? '',
-      $orderData['d_zip'] ?? $orderData['post_code'] ?? ''
-    ]);
-    $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
-
-    // Build Firestore document data
-    $firestoreData = [
-      'order_id' => $orderId,
-      'status' => $orderData['order_status'] ?? 'pending',
-      'driver_id' => $orderData['assigned_partner_id'] ?? null,
-      'pickup' => [
-        'lat' => (float)($orderData['p_latitude'] ?? 0),
-        'lng' => (float)($orderData['p_longitude'] ?? 0),
-        'location' => $pickupLocation
-      ],
-      'drop' => [
-        'lat' => (float)($orderData['d_latitude'] ?? 0),
-        'lng' => (float)($orderData['d_longitude'] ?? 0),
-        'location' => $deliveryLocation
-      ],
-      'driver_position' => [
-        'lat' =>  null,
-        'lng' => null,
-        'heading_deg' => null,
-        'speed_mps' => null
-      ],
-      'updated_at' => date('c')
-    ];
-
-    // Create document in Firestore
-    $result = FirebaseHelper::createFirestoreDocument('orders_live', (string)$orderId, $firestoreData);
-
-    if ($result['success']) {
-      return response()->json([
-        'code' => 200,
-        'success' => true,
-        'message' => 'Live tracking document created successfully',
-        'data' => [
-          'order_id' => $orderId,
-          'document_id' => (string)$orderId
-        ]
-      ], 200);
-    } else {
-      return response()->json([
-        'code' => 400,
-        'success' => false,
-        'message' => 'Failed to create live tracking document',
-        'error' => $result['error'] ?? 'Unknown error'
-      ], 400);
-    }
   }
 
 }

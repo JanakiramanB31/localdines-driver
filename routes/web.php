@@ -65,9 +65,6 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
   /* Auto Send Notifications for All Pending Orders - No Auth Required */
   $router->get('/order/send-notification/pending', 'DeliveryController@autoSendPendingNotifications');
 
-  /* Create Live Tracking Document in Firestore - No Auth Required */
-  $router->get('/order/live/create/{order_id}', 'DeliveryController@createOrderFireStoreDocument');
-
   $router->group(['middleware' => 'auth'], function () use ($router) {
 
     /* Dashboard Route */
