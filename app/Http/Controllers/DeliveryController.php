@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants;
+use App\Helpers\FirebaseHelper;
 use App\Helpers\UserValidationHelper;
 use App\Models\FoodDeliveryOrder;
 use App\Models\FoodDeliveryPartner;
@@ -22,7 +23,7 @@ class DeliveryController extends Controller
    */
   public function __construct()
   {
-    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications']]);
+    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications', 'getTrackingData', 'createLiveTracking']]);
   }
 
   /**
@@ -199,7 +200,13 @@ class DeliveryController extends Controller
     $orderData->order_status = $request->order_status;
     $orderData->save();
 
-     return response()->json([
+    // Update Firestore document with new status
+    FirebaseHelper::updateFirestoreDocument('orders_live', (string)$orderID, [
+      'status' => $request->order_status,
+      'updated_at' => date('c')
+    ]);
+
+    return response()->json([
       'code' => 200,
       'success' => true,
       'message' => 'Order Status Updated Successfully',
@@ -342,6 +349,12 @@ class DeliveryController extends Controller
     $orderData->order_status = 'delivered';
     $orderData->d_at = Carbon::now();
     $orderData->save();
+
+    // Update Firestore document with delivered status
+    FirebaseHelper::updateFirestoreDocument('orders_live', (string)$orderID, [
+      'status' => 'delivered',
+      'updated_at' => date('c')
+    ]);
 
     return response()->json([
       'code' => 200,
@@ -633,6 +646,13 @@ class DeliveryController extends Controller
       $partnerOrder->updated_at = Carbon::now();
       $partnerOrder->save();
     }
+
+    // Update Firestore document with accepted status and driver_id
+    FirebaseHelper::updateFirestoreDocument('orders_live', (string)$orderId, [
+      'status' => 'accepted',
+      'driver_id' => $userId,
+      'updated_at' => date('c')
+    ]);
 
     return response()->json([
       'code' => 200,
@@ -935,7 +955,7 @@ class DeliveryController extends Controller
     $notificationResults = [];
     
     foreach ($onlinePartners as $partner) {
-      $result = $this->sendPushNotification($partner, $order_id, $message, $orderData);
+      $result = FirebaseHelper::sendPushNotification($partner->fcm_token, $order_id, $message, $orderData);
       $partnerName = trim($partner->f_name." ".$partner->m_name." ".$partner->l_name);
       
       if ($result['success']) {
@@ -1099,232 +1119,6 @@ class DeliveryController extends Controller
     }
   }
 
-  private function sendPushNotification($partner, $orderId, $message, $orderData = null) {
-    try {
-      $fcmToken = $partner->fcm_token;
-
-      if (!$fcmToken) {
-        return ['success' => false, 'error' => 'No FCM token found'];
-      }
-
-      $projectId = env('FIREBASE_PROJECT_ID');
-      if (!$projectId) {
-        return ['success' => false, 'error' => 'Firebase project ID not configured'];
-      }
-
-      // Get OAuth 2.0 access token
-      $accessToken = $this->getFirebaseAccessToken();
-      if (!$accessToken) {
-        return ['success' => false, 'error' => 'Failed to get Firebase access token'];
-      }
-
-      // Enhanced notification body with order info
-      $notificationBody = $message;
-      if ($orderData) {
-        $itemCount = isset($orderData['order_items']) ? count($orderData['order_items']) : 0;
-
-        // Build full delivery address
-        $deliveryParts = array_filter([
-          $orderData['d_address_1'] ?? '',
-          $orderData['d_address_2'] ?? '',
-          $orderData['d_city'] ?? '',
-          $orderData['d_zip'] ?? $orderData['post_code']
-        ]);
-        $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
-        $paymentStatus = $orderData['customer_paid']==1 ? "Paid" : "Unpaid";
-
-        // Build full pickup address
-        $pickupParts = array_filter([
-          $orderData['p_name'] ?? '',
-          $orderData['p_address'] ?? ''
-        ]);
-        $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
-        $distanceMiles = $this->calculateDistanceMiles(
-          $orderData['p_latitude'], 
-          $orderData['p_longitude'],
-          $orderData['d_latitude'], 
-          $orderData['d_longitude']
-        );
-
-        // $notificationBody = "Order #{$orderData['order_id']} - {$itemCount} items - £{$orderData['total']} \n";
-        $notificationBody = "Pickup: {$pickupLocation}\n";
-        $notificationBody .= "Drop: {$deliveryLocation}\n";
-        $notificationBody .= "Distance: {$distanceMiles}\n";
-        $notificationBody .= "Charge: " . " {$orderData['delivery_charges']}";
-      }
-
-      // FCM HTTP v1 API payload structure
-      $notificationData = [
-        'message' => [
-          'token' => $fcmToken,
-         // 'notification' => [
-         // 'title' => "🛵 New Order #{$orderData['order_id']}",
-         // 'body' => $notificationBody
-         // ],
-          'data' => [
-            'order_id' => (string)$orderId,
-            'type' => 'new_order',
-            'status' => (string)$paymentStatus,
-            'p_addr' => (string)$pickupLocation,
-            'd_addr' => (string)$deliveryLocation,
-            'delivery_charge' => (string)$orderData['delivery_charges'],
-            'p_lat' => (string)$orderData['p_latitude'],
-            'p_lng' => (string)$orderData['p_longitude'],
-            'distance' => (string)$distanceMiles,
-          ],
-          'android' => [
-            'priority' => "HIGH",
-            'notification' => [
-              'channel_id' => 'orders_channel',
-              'sound' => 'order_bell',
-              'tag' => "order-{$orderData['order_id']}"
-            ]
-          ],
-          'apns' => [
-            'headers' => [
-              'apns-priority' => '10'
-            ],
-            'payload' => [
-              'aps' => [
-                'sound' => 'order_bell.wav',
-                'content-available' => 1
-              ]
-            ]
-          ]
-        ]
-      ];
-      
-      $headers = [
-        'Authorization: Bearer ' . $accessToken,
-        'Content-Type: application/json'
-      ];
-
-      $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
-
-      $ch = curl_init();
-      curl_setopt($ch, CURLOPT_URL, $url);
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($notificationData));
-      curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-
-      $response = curl_exec($ch);
-      $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-      if (curl_error($ch)) {
-        $error = curl_error($ch);
-        curl_close($ch);
-        return ['success' => false, 'error' => 'cURL error: ' . $error];
-      }
-
-      curl_close($ch);
-
-      if ($httpCode === 200) {
-        return ['success' => true];
-      } else {
-        $responseData = json_decode($response, true);
-        $errorMsg = isset($responseData['error']['message'])
-          ? $responseData['error']['message']
-          : "HTTP error: {$httpCode}";
-
-        // Add full error details for debugging
-        if (isset($responseData['error'])) {
-          $errorMsg .= " (Code: " . ($responseData['error']['status'] ?? 'N/A') . ")";
-          if (isset($responseData['error']['details'])) {
-            $errorMsg .= " - Details: " . json_encode($responseData['error']['details']);
-          }
-        }
-
-        return ['success' => false, 'error' => $errorMsg, 'full_response' => $responseData];
-      }
-
-    } catch (Exception $e) {
-      return ['success' => false, 'error' => 'Exception: ' . $e->getMessage()];
-    }
-  }
-
-  private function getFirebaseAccessToken() {
-    try {
-      // Get credentials from environment variables
-      $privateKey = env('FIREBASE_PRIVATE_KEY');
-      $clientEmail = env('FIREBASE_CLIENT_EMAIL');
-
-      if (!$privateKey || !$clientEmail) {
-        return null;
-      }
-
-      // Replace escaped newlines in private key
-      $privateKey = str_replace('\\n', "\n", $privateKey);
-
-      $credentials = [
-        'private_key' => $privateKey,
-        'client_email' => $clientEmail
-      ];
-      
-      // Create JWT
-      $now = time();
-      $expiry = $now + 3600;
-      
-      $header = [
-        'alg' => 'RS256',
-        'typ' => 'JWT'
-      ];
-      
-      $claimSet = [
-        'iss' => $credentials['client_email'],
-        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-        'aud' => 'https://oauth2.googleapis.com/token',
-        'iat' => $now,
-        'exp' => $expiry
-      ];
-      
-      $encodedHeader = $this->base64UrlEncode(json_encode($header));
-      $encodedClaimSet = $this->base64UrlEncode(json_encode($claimSet));
-      $signatureInput = $encodedHeader . '.' . $encodedClaimSet;
-      
-      $signature = '';
-      openssl_sign($signatureInput, $signature, $credentials['private_key'], 'SHA256');
-      $encodedSignature = $this->base64UrlEncode($signature);
-      
-      $jwt = $signatureInput . '.' . $encodedSignature;
-      // Exchange JWT for access token
-      $ch = curl_init();
-      curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-      curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        'assertion' => $jwt
-      ]));
-
-      $response = curl_exec($ch);
-
-      if (curl_error($ch)) {
-        echo "cURL Error: " . curl_error($ch);
-        exit;
-      }
-
-      curl_close($ch);
-
-      $responseData = json_decode($response, true);
-
-      return $responseData['access_token'] ?? null;
-
-    } catch (Exception $e) {
-      $this->pr("Error", $e);
-      return null;
-    }
-  }
-
-  private function base64UrlEncode($data) {
-    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-  }
-
   /**
    * @OA\Get(
    *     path="/auto-send-pending-notifications",
@@ -1452,7 +1246,7 @@ class DeliveryController extends Controller
 
       foreach ($eligiblePartners as $partner) {
         $message = 'New order available for pickup';
-        $result = $this->sendPushNotification($partner, $orderId, $message, $orderData);
+        $result = FirebaseHelper::sendPushNotification($partner->fcm_token, $orderId, $message, $orderData);
 
         $partnerName = trim($partner->f_name . " " . $partner->m_name . " " . $partner->s_name);
 
@@ -1500,55 +1294,117 @@ class DeliveryController extends Controller
     ], 200);
   }
 
-  public function calculateDistanceKm($lat1, $lon1, $lat2, $lon2) {
-    // Convert degrees to radians
-    $lat1 = deg2rad($lat1);
-    $lon1 = deg2rad($lon1);
-    $lat2 = deg2rad($lat2);
-    $lon2 = deg2rad($lon2);
+  /**
+   * @OA\Get(
+   *     path="/order/live/create/{order_id}",
+   *     summary="Create a new live tracking document in Firestore",
+   *     description="Creates a new document in Firestore orders_live collection for real-time tracking",
+   *     tags={"Delivery"},
+   *     @OA\Parameter(
+   *         name="order_id",
+   *         in="path",
+   *         required=true,
+   *         description="The ID of the order to create tracking for",
+   *         @OA\Schema(type="integer", example=123)
+   *     ),
+   *     @OA\Response(
+   *         response=200,
+   *         description="Document created successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=200),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Live tracking document created successfully")
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=400,
+   *         description="Failed to create document",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=400),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Failed to create live tracking document")
+   *         )
+   *     )
+   * )
+   */
+  public function createOrderFireStoreDocument(Request $request, $order_id) {
+    $orderId = $order_id;
 
-    // Haversine formula
-    $dLat = $lat2 - $lat1;
-    $dLon = $lon2 - $lon1;
+    // Get order details
+    $orderData = $this->getOrderDetailsForNotification($orderId, true);
 
-    $a = sin($dLat / 2) * sin($dLat / 2) +
-         cos($lat1) * cos($lat2) *
-         sin($dLon / 2) * sin($dLon / 2);
+    if (!$orderData) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found',
+      ], 404);
+    }
 
-    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    // $this->pr($orderData);
+    // exit;
 
-    // Earth's radius in kilometers
-    $earthRadiusKm = 6371;
+    // Build full pickup address
+    $pickupParts = array_filter([
+      $orderData['p_name'] ?? '',
+      $orderData['p_address'] ?? ''
+    ]);
+    $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
 
-    $distance = $earthRadiusKm * $c;
+    // Build full delivery address
+    $deliveryParts = array_filter([
+      $orderData['d_address_1'] ?? '',
+      $orderData['d_address_2'] ?? '',
+      $orderData['d_city'] ?? '',
+      $orderData['d_zip'] ?? $orderData['post_code'] ?? ''
+    ]);
+    $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
 
-    return round($distance, 2);
+    // Build Firestore document data
+    $firestoreData = [
+      'order_id' => $orderId,
+      'status' => $orderData['order_status'] ?? 'pending',
+      'driver_id' => $orderData['assigned_partner_id'] ?? null,
+      'pickup' => [
+        'lat' => (float)($orderData['p_latitude'] ?? 0),
+        'lng' => (float)($orderData['p_longitude'] ?? 0),
+        'location' => $pickupLocation
+      ],
+      'drop' => [
+        'lat' => (float)($orderData['d_latitude'] ?? 0),
+        'lng' => (float)($orderData['d_longitude'] ?? 0),
+        'location' => $deliveryLocation
+      ],
+      'driver_position' => [
+        'lat' =>  null,
+        'lng' => null,
+        'heading_deg' => null,
+        'speed_mps' => null
+      ],
+      'updated_at' => date('c')
+    ];
+
+    // Create document in Firestore
+    $result = FirebaseHelper::createFirestoreDocument('orders_live', (string)$orderId, $firestoreData);
+
+    if ($result['success']) {
+      return response()->json([
+        'code' => 200,
+        'success' => true,
+        'message' => 'Live tracking document created successfully',
+        'data' => [
+          'order_id' => $orderId,
+          'document_id' => (string)$orderId
+        ]
+      ], 200);
+    } else {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Failed to create live tracking document',
+        'error' => $result['error'] ?? 'Unknown error'
+      ], 400);
+    }
   }
-
-  public function calculateDistanceMiles($lat1, $lon1, $lat2, $lon2) {
-    // Convert degrees to radians
-    $lat1 = deg2rad($lat1);
-    $lon1 = deg2rad($lon1);
-    $lat2 = deg2rad($lat2);
-    $lon2 = deg2rad($lon2);
-
-    // Haversine formula
-    $dLat = $lat2 - $lat1;
-    $dLon = $lon2 - $lon1;
-
-    $a = sin($dLat / 2) * sin($dLat / 2) +
-         cos($lat1) * cos($lat2) *
-         sin($dLon / 2) * sin($dLon / 2);
-
-    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-    // Earth's radius in miles
-    $earthRadiusMiles = 3959;
-
-    $distance = $earthRadiusMiles * $c;
-
-    return round($distance, 2);
-  }
-
 
 }

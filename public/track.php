@@ -236,13 +236,13 @@ $orderId = isset($_GET['order_id']) ? trim($_GET['order_id']) : '';
       } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
       const firebaseConfig = {
-        apiKey: "AIzaSyB_d8zLPCidOKrTdkwOSOqw2TEwxi3rlHs",
-        authDomain: "driver-app-38a97.firebaseapp.com",
-        projectId: "driver-app-38a97",
-        storageBucket: "driver-app-38a97.firebasestorage.app",
-        messagingSenderId: "566355444024",
-        appId: "1:566355444024:web:4c1d7b7ef1b8e3a083c1cd",
-        measurementId: "G-F4CQGWC29T"
+        apiKey: "AIzaSyDgizWVhrSn7HoWkzQWIbfWdGPHHtzi87c",
+        authDomain: "test-696e0.firebaseapp.com",
+        projectId: "test-696e0",
+        storageBucket: "test-696e0.firebasestorage.app",
+        messagingSenderId: "313160059021",
+        appId: "1:313160059021:web:dcd3e373c0a6336593fac4",
+        measurementId: "G-ZVQYXW3W3W"
       };
 
       const app = initializeApp(firebaseConfig);
@@ -495,6 +495,15 @@ $orderId = isset($_GET['order_id']) ? trim($_GET['order_id']) : '';
           const p = (Number.isFinite(d?.pickup?.lat) && Number.isFinite(d?.pickup?.lng)) ? gLL(+d.pickup.lat, +d.pickup.lng) : null;
           const q = (Number.isFinite(d?.drop?.lat) && Number.isFinite(d?.drop?.lng)) ? gLL(+d.drop.lat, +d.drop.lng) : null;
 
+          const driverId = `${d.driver_id ?? '—'}`;
+          $driverId.textContent = driverId;
+
+          const pickupLocationText = locText(d?.pickup?.location);
+          const dropLocationText = locText(d?.drop?.location);
+
+          $pickupLoc.textContent = pickupLocationText;
+          $dropLoc.textContent = dropLocationText;
+
           if (p) {
             $pickupLL.textContent = `${fmt(p.lat())}, ${fmt(p.lng())}`;
             $pickupLink.href = `https://maps.google.com/?q=${p.lat()},${p.lng()}`;
@@ -511,15 +520,6 @@ $orderId = isset($_GET['order_id']) ? trim($_GET['order_id']) : '';
               `Drop: ${dropLocationText}` :
               `Drop (Home)`;
           }
-
-          const driverId = `${d.driver_id ?? '—'}`;
-          $driverId.textContent = driverId;
-
-          const pickupLocationText = locText(d?.pickup?.location);
-          const dropLocationText = locText(d?.drop?.location);
-
-          $pickupLoc.textContent = pickupLocationText;
-          $dropLoc.textContent = dropLocationText;
 
           const drvLat = Number(d?.driver_position?.lat ?? d?.lat ?? d?.driver_lat);
           const drvLng = Number(d?.driver_position?.lng ?? d?.lng ?? d?.driver_lng);
