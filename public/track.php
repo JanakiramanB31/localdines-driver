@@ -236,13 +236,13 @@ $orderId = isset($_GET['order_id']) ? trim($_GET['order_id']) : '';
       } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
       const firebaseConfig = {
-        apiKey: "AIzaSyDgizWVhrSn7HoWkzQWIbfWdGPHHtzi87c",
-        authDomain: "test-696e0.firebaseapp.com",
-        projectId: "test-696e0",
-        storageBucket: "test-696e0.firebasestorage.app",
-        messagingSenderId: "313160059021",
-        appId: "1:313160059021:web:dcd3e373c0a6336593fac4",
-        measurementId: "G-ZVQYXW3W3W"
+        apiKey: "AIzaSyB_d8zLPCidOKrTdkwOSOqw2TEwxi3rlHs",
+        authDomain: "driver-app-38a97.firebaseapp.com",
+        projectId: "driver-app-38a97",
+        storageBucket: "driver-app-38a97.firebasestorage.app",
+        messagingSenderId: "566355444024",
+        appId: "1:566355444024:web:4c1d7b7ef1b8e3a083c1cd",
+        measurementId: "G-F4CQGWC29T"
       };
 
       const app = initializeApp(firebaseConfig);
