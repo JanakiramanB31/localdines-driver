@@ -1095,7 +1095,7 @@ class DeliveryController extends Controller
         return [
           'name' => $productName,
           'quantity' => $item->cnt,
-          'price' => $item->price,
+          'price' => number_format($item->price, 2),
         ];
       });
 
@@ -1123,7 +1123,7 @@ class DeliveryController extends Controller
         'id' => $order->id,
         'order_id' => $order->order_id,
         'payment_status' => $order->is_paid,
-        'delivery_charges' => $order->price_delivery,
+        'delivery_charges' => number_format($order->price_delivery, 2),
         'first_name' => $order->first_name,
         'surname' => $order->surname,
         'phone_no' => $order->phone_no,
@@ -1138,12 +1138,12 @@ class DeliveryController extends Controller
         'd_address_2' => $order->d_address_2,
         'd_city' => $order->d_city,
         'd_state' => $order->d_state,
-        'd_zip' => $order->post_code ?? $order->d_zip,
+        'd_zip' => $order->d_zip,
         'd_notes' => $order->d_notes,
         'post_code' => $order->post_code,
-        'subtotal' => $order->subtotal,
-        'total' => $order->total,
-        'customer_paid' => $order->customer_paid,
+        'subtotal' => number_format($order->subtotal, 2),
+        'total' => number_format($order->total, 2),
+        'customer_paid' => number_format($order->customer_paid, 2),
         'order_items' => $orderItems->values()->toArray(),
       ];
 
