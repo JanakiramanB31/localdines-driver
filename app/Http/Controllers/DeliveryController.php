@@ -23,7 +23,7 @@ class DeliveryController extends Controller
    */
   public function __construct()
   {
-    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications', 'getTrackingData', 'createLiveTracking']]);
+    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications', 'createOrderFireStoreDocument']]);
   }
 
   /**
