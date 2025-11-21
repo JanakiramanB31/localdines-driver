@@ -1007,6 +1007,7 @@ class DeliveryController extends Controller
       $notificationResults[] = [
         'partner_id' => $partner->id,
         'partner_name' => $partnerName,
+        'distance' => $result['distance'],
         'status' => $result['success'] ? 'sent' : 'failed',
         'error' => $result['error'] ?? null
       ];
@@ -1138,7 +1139,7 @@ class DeliveryController extends Controller
         'd_address_2' => $order->d_address_2,
         'd_city' => $order->d_city,
         'd_state' => $order->d_state,
-        'd_zip' => $order->d_zip,
+        'd_zip' => null,
         'd_notes' => $order->d_notes,
         'post_code' => $order->post_code,
         'subtotal' => number_format($order->subtotal, 2),

@@ -529,7 +529,10 @@ class FirebaseHelper
       curl_close($ch);
 
       if ($httpCode === 200) {
-        return ['success' => true];
+        return [
+          'success' => true,
+          'distance' => $distanceMiles,
+        ];
       } else {
         $responseData = json_decode($response, true);
         $errorMsg = isset($responseData['error']['message'])
