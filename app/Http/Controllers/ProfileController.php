@@ -753,7 +753,7 @@ class ProfileController extends Controller
       's_name' => 'nullable|min:3',
       'm_name' => 'nullable|min:1',
       'phone_number' => 'nullable|string',
-      'email' => 'nullable|email',
+      'email' => 'nullable|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
       'dob' => 'nullable|date',
       'nationality' => 'nullable|string',
       'is_non_british' => 'nullable|boolean',
