@@ -472,7 +472,7 @@ class FirebaseHelper
             'delivery_charge' => (string)($orderData['delivery_charges'] ?? ''),
             'p_lat' => (string)($orderData['p_latitude'] ?? ''),
             'p_lng' => (string)($orderData['p_longitude'] ?? ''),
-            'distance' => (string)$distanceMiles,
+            'distance_km' => (string)$distanceMiles,
           ],
           'android' => [
             'priority' => "HIGH",
