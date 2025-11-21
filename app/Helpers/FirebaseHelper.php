@@ -522,7 +522,8 @@ class FirebaseHelper
         return [
           'success' => false,
           'error' => $error,
-          'error_code' => 'CURL_ERROR'
+          'error_code' => 'CURL_ERROR',
+          'distance' => $distanceMiles,
         ];
       }
 
@@ -545,7 +546,8 @@ class FirebaseHelper
           'success' => false,
           'error' => $errorMsg,
           'error_code' => $errorCode,
-          'http_code' => $httpCode
+          'http_code' => $httpCode,
+          'distance' => $distanceMiles,
         ];
       }
 
@@ -553,7 +555,8 @@ class FirebaseHelper
       return [
         'success' => false,
         'error' => $e->getMessage(),
-        'error_code' => 'EXCEPTION'
+        'error_code' => 'EXCEPTION',
+        'distance' => $distanceMiles ?? null,
       ];
     }
   }

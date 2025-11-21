@@ -1007,7 +1007,7 @@ class DeliveryController extends Controller
       $notificationResults[] = [
         'partner_id' => $partner->id,
         'partner_name' => $partnerName,
-        'distance' => $result['distance'],
+        'distance' => $result['distance'] ?? null,
         'status' => $result['success'] ? 'sent' : 'failed',
         'error' => $result['error'] ?? null
       ];
@@ -1023,6 +1023,7 @@ class DeliveryController extends Controller
       'success' => true,
       'message' => $message,
       'data' => [
+        'distance' => $result['distance'] ?? null,
         'partners_notified' => $partnersNotified,
         'failed_notifications' => $failedNotifications,
         'excluded_rejected_partners' => $totalRejected,
