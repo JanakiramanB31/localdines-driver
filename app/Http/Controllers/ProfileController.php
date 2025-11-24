@@ -490,7 +490,9 @@ class ProfileController extends Controller
       'licence_country_of_issue' => 'required_if:is_uk_licence,true',
       //'has_medical_condition' => 'required|boolean',
       //'can_be_used_as_reference' => 'required|boolean',
-      'is_agreed_privacy_policy' => 'required|boolean',
+      'is_agreed_privacy_policy' => 'required|boolean|accepted',
+    ], [
+      'is_agreed_privacy_policy.accepted' => 'Please accept the privacy policy.',
     ]);
 
     $userId = $request->auth->sub;
@@ -505,8 +507,8 @@ class ProfileController extends Controller
     if ($request->has('docs')) {
       foreach ($request->docs as $index => $doc) {
         if (isset($doc['doc_expiry'])) {
-          $expiryDate = Carbon::parse($doc['doc_expiry']);
-          if ($expiryDate->isPast()) {
+          $expiryDate = Carbon::parse($doc['doc_expiry'])->format('Y-m-d');
+          if (Carbon::parse($expiryDate)->isPast()) {
             return response()->json([
               'code' => 422,
               'success' => false,
@@ -754,7 +756,7 @@ class ProfileController extends Controller
       'm_name' => 'nullable|min:1',
       'phone_number' => 'nullable|string',
       'email' => 'nullable|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
-      'dob' => 'nullable|date',
+      'dob' => 'nullable|date|before:today',
       'nationality' => 'nullable|string',
       'is_non_british' => 'nullable|boolean',
 
@@ -776,6 +778,17 @@ class ProfileController extends Controller
       return $validation['response'];
     }
     $deliveryPartner = $validation['user'];
+
+    if ($request->has('dob') && $request->dob) {
+      $dobDate = Carbon::parse($request->dob)->format('Y-m-d');
+      if (!Carbon::parse($dobDate)->isPast()) {
+        return response()->json([
+          'code' => 422,
+          'success' => false,
+          'message' => 'Date of birth must be a past date'
+        ], 422);
+      }
+    }
 
     // Only check email existence if it's being changed
     if ($request->email && $request->email !== $deliveryPartner->email) {
@@ -809,7 +822,7 @@ class ProfileController extends Controller
     $deliveryPartner->s_name = $request->s_name ?? $deliveryPartner->s_name;
     $deliveryPartner->phone_number = $request->phone_number ?? $deliveryPartner->phone_number;
     $deliveryPartner->email = $request->email ?? $deliveryPartner->email;
-    $deliveryPartner->dob = $request->dob ?? $deliveryPartner->dob;
+    $deliveryPartner->dob = $request->dob ? Carbon::parse($request->dob)->format('Y-m-d') : $deliveryPartner->dob;
     $deliveryPartner->nationality = $request->nationality ?? $deliveryPartner->nationality;
     $deliveryPartner->is_non_british = $request->is_non_british ?? $deliveryPartner->is_non_british;
     $deliveryPartner->save();
