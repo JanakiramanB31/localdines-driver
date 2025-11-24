@@ -21,10 +21,10 @@ class AdminController extends Controller
 
   public function approveUser(Request $request) {
     $this->validate($request,[
-      'user_id' => 'required',
+      'email' => 'required'
     ]);
 
-    $deliveryPartner = FoodDeliveryPartner::find($request->user_id);
+    $deliveryPartner = FoodDeliveryPartner::whre('email',$request->email)->first();
 
     if (!$deliveryPartner) {
       return response()->json([
@@ -47,10 +47,10 @@ class AdminController extends Controller
 
   public function rejectUser(Request $request) {
     $this->validate($request,[
-      'user_id' => 'required',
+      'email' => 'required'
     ]);
 
-    $deliveryPartner = FoodDeliveryPartner::find($request->user_id);
+    $deliveryPartner = FoodDeliveryPartner::whre('email',$request->email)->first();
 
     if (!$deliveryPartner) {
       return response()->json([
