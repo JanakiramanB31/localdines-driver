@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 use App\Models\FoodDeliveryPartner;
-use App\Models\FoodDeliveryPartnersLoginOtp;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -24,7 +23,7 @@ class AdminController extends Controller
       'email' => 'required'
     ]);
 
-    $deliveryPartner = FoodDeliveryPartner::whre('email',$request->email)->first();
+    $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
 
     if (!$deliveryPartner) {
       return response()->json([
@@ -35,7 +34,7 @@ class AdminController extends Controller
     }
 
     $deliveryPartner->admin_approval = "accepted";
-    $deliveryPartner->approved_at = Carbon::now('UTC');;
+    $deliveryPartner->approved_at = Carbon::now('UTC');
     $deliveryPartner->save();
 
     return response()->json([
@@ -50,7 +49,7 @@ class AdminController extends Controller
       'email' => 'required'
     ]);
 
-    $deliveryPartner = FoodDeliveryPartner::whre('email',$request->email)->first();
+    $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
 
     if (!$deliveryPartner) {
       return response()->json([

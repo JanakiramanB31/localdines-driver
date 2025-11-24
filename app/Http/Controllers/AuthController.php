@@ -138,9 +138,9 @@ class AuthController extends Controller
     // }
 
     return response()->json([
-      'code' => '201',
+      'code' => 201,
       'success' => true,
-      'message'=> "User Created Succesfully",
+      'message'=> "User Created Successfully",
       'data' => [
         'user_id' => $deliveryPartner->id
       ]
@@ -521,7 +521,7 @@ class AuthController extends Controller
         'code' => 404,
         'success' => false,
         'message' => 'User not found'
-      ]);
+      ], 404);
     }
 
     $deliveryPartner->password = Hash::make($request->new_password);
@@ -582,7 +582,7 @@ class AuthController extends Controller
           'code' => 400,
           'success' => false,
           'message' => 'Please complete the assigned order before logging out',
-      ], 200);
+      ], 400);
     }
 
     // Set duty status to offline

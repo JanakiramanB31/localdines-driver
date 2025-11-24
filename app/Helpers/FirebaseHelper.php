@@ -369,7 +369,7 @@ class FirebaseHelper
     }
     if (is_array($value)) {
       // Check if it's an associative array (map) or indexed array
-      if (array_keys($value) !== range(0, count($value) - 1)) {
+      if (empty($value) || array_keys($value) !== range(0, count($value) - 1)) {
         // Associative array -> mapValue
         return [
           'mapValue' => [
@@ -437,7 +437,7 @@ class FirebaseHelper
           $orderData['d_zip'] ?? $orderData['post_code'] ?? ''
         ]);
         $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
-        $paymentStatus = ($orderData['customer_paid'] ?? 0) == 1 ? "Paid" : "Unpaid";
+        $paymentStatus = ($orderData['payment_status'] ?? 0) == 1 ? "Paid" : "Unpaid";
 
         // Build full pickup address
         $pickupParts = array_filter([

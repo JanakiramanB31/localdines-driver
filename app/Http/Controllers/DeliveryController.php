@@ -74,7 +74,7 @@ class DeliveryController extends Controller
           'code' => 400,
           'success' => false,
           'message' => 'Please complete the assigned order before updating duty status to offline.',
-      ], 200);
+      ], 400);
     }
 
     $userData->duty_status = $request->duty_status == Constants::DUTY_STATUS['ON'] ? true : false;
@@ -263,8 +263,6 @@ class DeliveryController extends Controller
         'message' => 'Order Not Found',
       ], 404);
     }
-
-    $phoneNumber = $orderData->phone_no;
 
     $otp = mt_rand(1000, 9999);
 
@@ -996,7 +994,7 @@ class DeliveryController extends Controller
     
     foreach ($onlinePartners as $partner) {
       $result = FirebaseHelper::sendPushNotification($partner->fcm_token, $order_id, $message, $orderData);
-      $partnerName = trim($partner->f_name." ".$partner->m_name." ".$partner->l_name);
+      $partnerName = trim($partner->f_name." ".$partner->m_name." ".$partner->s_name);
       
       if ($result['success']) {
         $partnersNotified++;

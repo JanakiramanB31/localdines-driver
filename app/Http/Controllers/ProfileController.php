@@ -39,14 +39,16 @@ class ProfileController extends Controller
     $data = $userData->toArray();
 
     $address = FoodDeliveryPartnerAddress::where('partner_id', $userId)->first();
-    
-    unset(
-      $address['id'],
-      $address['partner_id'],
-      $address['is_active'], 
-      $address['created_at'],
-      $address['updated_at']
-    );
+
+    if ($address) {
+      unset(
+        $address['id'],
+        $address['partner_id'],
+        $address['is_active'],
+        $address['created_at'],
+        $address['updated_at']
+      );
+    }
 
     $data['is_admin_approved'] = $data['admin_approval'] == 'accepted' ? true : false;
 
@@ -95,7 +97,7 @@ class ProfileController extends Controller
 
     $document = FoodDeliveryPartnerDocument::find($docId);
 
-    if (!$document || $document->partner_id !== $userId) {
+    if (!$document || $document->partner_id != $userId) {
       return response()->json([
         'code' => 403,
         'success' => false,
@@ -103,7 +105,7 @@ class ProfileController extends Controller
       ], 403);
     }
 
-    $document->delete($docId);
+    $document->delete();
 
     return response()->json([
       'code' => 200,
@@ -382,14 +384,25 @@ class ProfileController extends Controller
 
     $bankAccData = FoodDeliveryPartnerBankAccInformation::where('partner_id', $userId)->first();
 
-    $bankAccData['is_admin_approved'] = $validation['user']['admin_approval'] == 'accepted' ? true : false;
+    if ($bankAccData) {
+      unset(
+        $bankAccData['id'],
+        $bankAccData['is_active'],
+        $bankAccData['created_at'],
+        $bankAccData['updated_at']
+      );
+    } else {
+      $bankAccData = [
+        'partner_id' => $userId,
+        'name' => '',
+        'acc_number' => '',
+        'sort_code' => '',
+        'is_account_in_your_name' => '',
+        'name_on_the_account' => ''
+      ];
+    }
 
-    unset(
-      $bankAccData['id'],
-      $bankAccData['is_active'], 
-      $bankAccData['created_at'], 
-      $bankAccData['updated_at']
-    );
+    $bankAccData['is_admin_approved'] = $validation['user']['admin_approval'] == 'accepted' ? true : false;
 
     return response()->json([
       'code' => 200,
@@ -474,7 +487,7 @@ class ProfileController extends Controller
     $this->validate($request, [
       'requires_work_permit' => 'required|boolean',
       /* Documents array validation */
-      'docs' => 'required|array',
+      'docs' => 'nullable|array',
       'docs.*.doc_type' => 'required|in:visa,passport,ni,license,sign',
       'docs.*.doc_number' => 'nullable|string',
       'docs.*.doc_expiry' => 'nullable|date|after:today',
@@ -503,66 +516,59 @@ class ProfileController extends Controller
       return $validation['response'];
     }
 
-    // Additional validation for document expiry dates
-    if ($request->has('docs')) {
+    // Update existing record or create new one
+    FoodDeliveryPartnerOtherInformation::updateOrCreate(
+      ['partner_id' => $userId],
+      [
+        'partner_id' => $userId,
+        'requires_work_permit' => $request->requires_work_permit,
+        'uses_car' => $request->uses_car,
+        'uses_motorcycle' => $request->uses_motorcycle,
+        'uses_bicycle' => $request->uses_bicycle,
+        'has_motoring_convictions' => $request->has_motoring_convictions,
+        'is_uk_licence' => $request->is_uk_licence,
+        'licence_country_of_issue' => $request->licence_country_of_issue,
+        'has_medical_condition' => $request->has_medical_condition,
+        'can_be_used_as_reference' => $request->can_be_used_as_reference,
+        'is_agreed_privacy_policy' => $request->is_agreed_privacy_policy
+      ]
+    );
+
+    if (is_array($request->docs)) {
       foreach ($request->docs as $index => $doc) {
-        if (isset($doc['doc_expiry'])) {
-          $expiryDate = Carbon::parse($doc['doc_expiry'])->format('Y-m-d');
-          if (Carbon::parse($expiryDate)->isPast()) {
-            return response()->json([
-              'code' => 422,
-              'success' => false,
-              'message' => "Document expiry date for {$doc['doc_type']} must be a future date"
-            ], 422);
+        if (!empty($doc['doc_expiry']) && Carbon::parse($doc['doc_expiry'])->isPast()) {
+          return response()->json([
+            'code' => 422,
+            'success' => false,
+            'message' => "Document expiry date for {$doc['doc_type']} must be a future date"
+          ], 422);
+        }
+        $expiryDate = !empty($doc['doc_expiry']) ? Carbon::parse($doc['doc_expiry'])->format('Y-m-d') : null;
+
+        $deliveryPartnerDocs = new FoodDeliveryPartnerDocument(); 
+        $deliveryPartnerDocs->partner_id = $userId;
+        $deliveryPartnerDocs->doc_type = $doc['doc_type'] ?? null;
+        $deliveryPartnerDocs->doc_number = $doc['doc_number'] ?? null;
+        $deliveryPartnerDocs->doc_expiry = $expiryDate ?? null;
+        if ($request->hasFile("docs.$index.doc_url")) {
+          $document = $request->file("docs.$index.doc_url");
+          $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
+
+          $uploadPath = base_path("public/users/$userId");
+          // echo $uploadPath;  
+
+          if (!file_exists($uploadPath)) {
+            mkdir($uploadPath, 0777, true);
           }
+
+          $document->move($uploadPath, $docName);
+          $deliveryPartnerDocs->doc_url = "images/users/$userId/$docName";
+        } else {
+          $deliveryPartnerDocs->doc_url = null;
         }
+        
+        $deliveryPartnerDocs->save();
       }
-    }
-
-    $deliveryPartnerOtherInfo = new FoodDeliveryPartnerOtherInformation();
-    $deliveryPartnerOtherInfo->partner_id = $userId;
-    $deliveryPartnerOtherInfo->requires_work_permit  = $request->requires_work_permit ;
-
-    $deliveryPartnerOtherInfo->uses_car = $request->uses_car;
-    $deliveryPartnerOtherInfo->uses_motorcycle = $request->uses_motorcycle;
-    $deliveryPartnerOtherInfo->uses_bicycle = $request->uses_bicycle;
-
-    $deliveryPartnerOtherInfo->has_motoring_convictions  = $request->has_motoring_convictions ;
-
-    $deliveryPartnerOtherInfo->is_uk_licence = $request->is_uk_licence;
-    $deliveryPartnerOtherInfo->licence_country_of_issue = $request->licence_country_of_issue;
-
-    $deliveryPartnerOtherInfo->has_medical_condition = $request->has_medical_condition;
-    $deliveryPartnerOtherInfo->can_be_used_as_reference  = $request->can_be_used_as_reference;
-
-    $deliveryPartnerOtherInfo->is_agreed_privacy_policy  = $request->is_agreed_privacy_policy;
-
-    $deliveryPartnerOtherInfo->save();
-
-    foreach ($request->docs as $index => $doc) {
-      $deliveryPartnerDocs = new FoodDeliveryPartnerDocument(); 
-      $deliveryPartnerDocs->partner_id = $userId;
-      $deliveryPartnerDocs->doc_type = $doc['doc_type'] ?? null;
-      $deliveryPartnerDocs->doc_number = $doc['doc_number'] ?? null;
-      $deliveryPartnerDocs->doc_expiry = Carbon::parse($doc['doc_expiry'])->format('Y-m-d') ?? null;
-      if ($request->hasFile("docs.$index.doc_url")) {
-        $document = $request->file("docs.$index.doc_url");
-        $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
-
-        $uploadPath = base_path("public/users/$userId");
-        // echo $uploadPath;  
-
-        if (!file_exists($uploadPath)) {
-          mkdir($uploadPath, 0777, true);
-        }
-
-        $document->move($uploadPath, $docName);
-        $deliveryPartnerDocs->doc_url = "images/users/$userId/$docName";
-      } else {
-        $deliveryPartnerDocs->doc_url = null;
-      }
-      
-      $deliveryPartnerDocs->save();
     }
 
     if (is_array($request->user_references)) {
@@ -779,16 +785,16 @@ class ProfileController extends Controller
     }
     $deliveryPartner = $validation['user'];
 
-    if ($request->has('dob') && $request->dob) {
-      $dobDate = Carbon::parse($request->dob)->format('Y-m-d');
-      if (!Carbon::parse($dobDate)->isPast()) {
-        return response()->json([
-          'code' => 422,
-          'success' => false,
-          'message' => 'Date of birth must be a past date'
-        ], 422);
-      }
+    if ($request->dob && !Carbon::parse($request->dob)->isPast()) {
+      return response()->json([
+        'code' => 422,
+        'success' => false,
+        'message' => 'Date of birth must be a past date'
+      ], 422);
     }
+
+    $dobDate = $request->dob ? Carbon::parse($request->dob)->format('Y-m-d') : null;
+
 
     // Only check email existence if it's being changed
     if ($request->email && $request->email !== $deliveryPartner->email) {
@@ -822,20 +828,20 @@ class ProfileController extends Controller
     $deliveryPartner->s_name = $request->s_name ?? $deliveryPartner->s_name;
     $deliveryPartner->phone_number = $request->phone_number ?? $deliveryPartner->phone_number;
     $deliveryPartner->email = $request->email ?? $deliveryPartner->email;
-    $deliveryPartner->dob = $request->dob ? Carbon::parse($request->dob)->format('Y-m-d') : $deliveryPartner->dob;
+    $deliveryPartner->dob = $request->dob ? $dobDate : $deliveryPartner->dob;
     $deliveryPartner->nationality = $request->nationality ?? $deliveryPartner->nationality;
     $deliveryPartner->is_non_british = $request->is_non_british ?? $deliveryPartner->is_non_british;
     $deliveryPartner->save();
 
     $deliveryPartnerAddress = FoodDeliveryPartnerAddress::where('partner_id', $userId)->first();
 
-    $deliveryPartnerAddress->home_no = $request->home_no;
-    $deliveryPartnerAddress->home_name = $request->home_name;
-    $deliveryPartnerAddress->street_name = $request->street_name;
-    $deliveryPartnerAddress->city = $request->city;
-    $deliveryPartnerAddress->county = $request->county;
-    $deliveryPartnerAddress->post_code = $request->post_code;
-    $deliveryPartnerAddress->home_phone = $request->home_phone;
+    $deliveryPartnerAddress->home_no = $request->home_no ?? $deliveryPartnerAddress->home_no;
+    $deliveryPartnerAddress->home_name = $request->home_name ?? $deliveryPartnerAddress->home_name;
+    $deliveryPartnerAddress->street_name = $request->street_name ?? $deliveryPartnerAddress->street_name;
+    $deliveryPartnerAddress->city = $request->city ?? $deliveryPartnerAddress->city;
+    $deliveryPartnerAddress->county = $request->county ?? $deliveryPartnerAddress->county;
+    $deliveryPartnerAddress->post_code = $request->post_code ?? $deliveryPartnerAddress->post_code;
+    $deliveryPartnerAddress->home_phone = $request->home_phone ?? $deliveryPartnerAddress->home_phone;
 
     $deliveryPartnerAddress->save();
 

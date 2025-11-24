@@ -66,7 +66,6 @@ class JwtAuthHelper
 
   public static function verifyRefreshToken ($refToken) {
     try {
-      //$refToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJsb2NhbGhvc3QiLCJzdWIiOjMzLCJuYW1lIjoiR29waSIsImlhdCI6MTc0Nzc0OTU1MywiZXhwIjoxNzUwMzQxNTUzfQ.nFuYI5jPBMFfpI8V-aw5-KF9QI42R8R-FqQDJnZikDM';
       
       $jwtRefreshKey = env('JWT_REFRESH_TOKEN_SECRET_KEY');
       $decodedRefreshToken = JWT::decode($refToken, new Key($jwtRefreshKey, 'HS256'));
