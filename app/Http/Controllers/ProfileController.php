@@ -544,7 +544,7 @@ class ProfileController extends Controller
       $deliveryPartnerDocs->partner_id = $userId;
       $deliveryPartnerDocs->doc_type = $doc['doc_type'] ?? null;
       $deliveryPartnerDocs->doc_number = $doc['doc_number'] ?? null;
-      $deliveryPartnerDocs->doc_expiry = $doc['doc_expiry'] ?? null;
+      $deliveryPartnerDocs->doc_expiry = Carbon::parse($doc['doc_expiry'])->format('Y-m-d') ?? null;
       if ($request->hasFile("docs.$index.doc_url")) {
         $document = $request->file("docs.$index.doc_url");
         $docName = time() . '_' . uniqid() . '.' . $document->getClientOriginalExtension();  
