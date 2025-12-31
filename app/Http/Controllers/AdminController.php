@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Constants;
 use App\Models\FoodDeliveryPartner;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,11 +20,25 @@ class AdminController extends Controller
   }
 
   public function approveUser(Request $request) {
-    $this->validate($request,[
-      'email' => 'required'
-    ]);
+    $email = $request->query('email');
 
-    $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
+    if (!$email) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Email is required'
+      ], 400);
+    }
+
+    if (!preg_match(Constants::EMAIL_REGEX, $email)) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Invalid email format'
+      ], 400);
+    }
+
+    $deliveryPartner = FoodDeliveryPartner::where('email', $email)->first();
 
     if (!$deliveryPartner) {
       return response()->json([
@@ -45,11 +60,25 @@ class AdminController extends Controller
   }
 
   public function rejectUser(Request $request) {
-    $this->validate($request,[
-      'email' => 'required'
-    ]);
+    $email = $request->query('email');
 
-    $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
+    if (!$email) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Email is required'
+      ], 400);
+    }
+
+    if (!preg_match(Constants::EMAIL_REGEX, $email)) {
+      return response()->json([
+        'code' => 400,
+        'success' => false,
+        'message' => 'Invalid email format'
+      ], 400);
+    }
+
+    $deliveryPartner = FoodDeliveryPartner::where('email', $email)->first();
 
     if (!$deliveryPartner) {
       return response()->json([

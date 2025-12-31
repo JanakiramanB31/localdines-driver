@@ -52,10 +52,10 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
   $router->group(['prefix' => 'admin'], function () use ($router) {
 
     /* Approve an User */
-    $router->post('/approve', 'AdminController@approveUser');
+    $router->get('/approve', 'AdminController@approveUser');
 
     /* Reject an User */
-    $router->post('/reject', 'AdminController@rejectUser');
+    $router->get('/reject', 'AdminController@rejectUser');
 
   });
   

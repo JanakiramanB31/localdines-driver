@@ -75,7 +75,7 @@ class AuthController extends Controller
       //'m_name' => 'required|min:3',
       's_name' => 'required|min:3',
       'phone_number' => 'required',
-      'email' => 'required|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/|unique:food_delivery_partners,email',
+      'email' => 'required|regex:' . Constants::EMAIL_REGEX . '|unique:food_delivery_partners,email',
       'password' => 'required|min:8',
       'dob' => 'required|date',
       // 'nationality' => 'required', //Default is United Kingdom
@@ -186,7 +186,7 @@ class AuthController extends Controller
   public function login(Request $request) {
 
     $this->validate($request,[
-      'email' => 'required|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
+      'email' => 'required|regex:' . Constants::EMAIL_REGEX,
       'password' => 'required|min:8'
     ]);
 
@@ -352,7 +352,7 @@ class AuthController extends Controller
   public function verifyEmailOTP(Request $request) {
 
     $this->validate($request,[
-      'email' => 'required|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/',
+      'email' => 'required|regex:' . Constants::EMAIL_REGEX,
       'otp' => 'required|min:4'
     ]);
 
@@ -455,7 +455,7 @@ class AuthController extends Controller
 
   public function forgotPassword(Request $request) {
     $this->validate($request, [
-      'email' => 'required|regex:/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/'
+      'email' => 'required|regex:' . Constants::EMAIL_REGEX
     ]);
 
     $deliveryPartner = FoodDeliveryPartner::where('email', $request->email)->first();
