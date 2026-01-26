@@ -57,6 +57,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     /* Reject an User */
     $router->get('/reject', 'AdminController@rejectUser');
 
+    /* Check Online Drivers */
+    $router->get('/delivery/status', 'AdminController@checkOnlineDrivers');
+
   });
   
   /* Send Order Notification to Online Partners - No Auth Required */

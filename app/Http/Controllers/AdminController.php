@@ -97,5 +97,32 @@ class AdminController extends Controller
       'message' => 'User Rejected by admin'
     ], 200);
   }
-    
+
+  public function checkOnlineDrivers() {
+    $onlineDriversCount = FoodDeliveryPartner::where('duty_status', true)
+      ->where('admin_approval', 'accepted')
+      ->where('is_active', 1)
+      ->count();
+
+    if ($onlineDriversCount === 0) {
+      return response()->json([
+        'code' => 200,
+        'success' => false,
+        'message' => 'No online drivers found',
+        'data' => [
+          'is_delivery_available' => false
+        ]
+      ], 200);
+    }
+
+    return response()->json([
+      'code' => 200,
+      'success' => true,
+      'message' => $onlineDriversCount . ' online driver(s) found',
+      'data' => [
+        'is_delivery_available' => true,
+      ]
+    ], 200);
+  }
+
 }
