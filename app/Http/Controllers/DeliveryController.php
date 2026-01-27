@@ -130,8 +130,8 @@ class DeliveryController extends Controller
       ], 200);
     }
 
-    $updatedOrderData = $assignedOrders->map(function($assignedOrder) {
-      $orderData = $this->getOrderDetailsForNotification($assignedOrder->order_id, false);
+    $updatedOrderData = $assignedOrders->map(function($assignedOrder) use ($userId) {
+      $orderData = $this->getOrderDetailsForNotification($assignedOrder->order_id, false, 'all', $userId);
       if ($orderData) {
         $orderData['order_status'] = $assignedOrder->order_status;
       }
@@ -511,7 +511,7 @@ class DeliveryController extends Controller
       return $validation['response'];
     }
         
-    $orderData = $this->getOrderDetailsForNotification($orderId, true);
+    $orderData = $this->getOrderDetailsForNotification($orderId, true, 'all', $userId);
     
     if (!$orderData) {
       return response()->json([
