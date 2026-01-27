@@ -364,7 +364,7 @@ class DeliveryController extends Controller
   /**
    * @OA\Post(
    *     path="/order-history",
-   *     summary="Retrieve past delivery orders",
+   *     summary="Retrieve today's delivery orders sorted by status (pending, completed, rejected)",
    *     tags={"Delivery"},
    *     security={{"bearerAuth":{}}},
    *     @OA\Response(
@@ -388,8 +388,11 @@ class DeliveryController extends Controller
       return $validation['response'];
     }
 
+    // Fetch only today's orders
     $orderHistory = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
-    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at')->get();
+    ->whereDate('created_at', Carbon::today())
+    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at')
+    ->get();
 
     if($orderHistory->isEmpty()) {
       return response()->json([
@@ -402,7 +405,6 @@ class DeliveryController extends Controller
     $updatedOrderData = $orderHistory->map(function($historyOrder) use ($userId) {
       $orderData = $this->getOrderDetailsForNotification($historyOrder->order_id, true, 'all', $userId);
       if ($orderData) {
-        // Format to match existing orderHistory structure
         return [
           'id' => $historyOrder->id,
           'order_id' => $historyOrder->order_id,
@@ -413,13 +415,19 @@ class DeliveryController extends Controller
         ];
       }
       return null;
-    })->filter(); // Remove null values
+    })->filter();
+
+    // Reorder: pending (accepted/collected) first, then completed (delivered), then rejected
+    $statusOrder = ['accepted' => 0, 'collected' => 1, 'delivered' => 2, 'rejected' => 3];
+    $sortedOrderData = $updatedOrderData->sort(function($a, $b) use ($statusOrder) {
+      return ($statusOrder[$a['order_status']] ?? 99) <=> ($statusOrder[$b['order_status']] ?? 99);
+    });
 
     return response()->json([
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
-      'data' => $updatedOrderData->values()
+      'data' => $sortedOrderData->values()
     ], 200);
   }
 
