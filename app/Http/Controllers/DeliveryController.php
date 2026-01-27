@@ -399,8 +399,8 @@ class DeliveryController extends Controller
       ], 404);
     }
 
-    $updatedOrderData = $orderHistory->map(function($historyOrder) {
-      $orderData = $this->getOrderDetailsForNotification($historyOrder->order_id, true);
+    $updatedOrderData = $orderHistory->map(function($historyOrder) use ($userId) {
+      $orderData = $this->getOrderDetailsForNotification($historyOrder->order_id, true, 'all', $userId);
       if ($orderData) {
         // Format to match existing orderHistory structure
         return [
@@ -1032,7 +1032,7 @@ class DeliveryController extends Controller
     ], 200);
   }
 
-  private function getOrderDetailsForNotification($orderId, $includeUserDetails = false, $orderStatus='all') {
+  private function getOrderDetailsForNotification($orderId, $includeUserDetails = false, $orderStatus='all', $userId = null) {
     try {
       $productData = Cache::remember('product_data', Carbon::now()->addDay(), function() {
         return DB::table('food_delivery_plugin_base_multi_lang')
@@ -1058,9 +1058,13 @@ class DeliveryController extends Controller
         $partnerTakenOrderQuery = FoodDeliveryPartnerTakenOrder::with(['order' => function($query) {
           $query->select('id', 'is_paid', 'price_delivery', 'order_id', 'first_name', 'surname', 'phone_no');
         }])->where('order_id', $orderId);
-        
+
         if($orderStatus !== 'all') {
           $partnerTakenOrderQuery->where('order_status', $orderStatus);
+        }
+
+        if($userId !== null) {
+          $partnerTakenOrderQuery->where('user_id', $userId);
         }
         
         $partnerTakenOrder = $partnerTakenOrderQuery->first();
