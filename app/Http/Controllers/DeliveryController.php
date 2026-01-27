@@ -187,7 +187,7 @@ class DeliveryController extends Controller
     }
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
+    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->where('user_id', $userId)->first();
      
     if(!$orderData) {
       return response()->json([
@@ -254,7 +254,7 @@ class DeliveryController extends Controller
     }
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
+    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->where('user_id', $userId)->first();
 
     if(!$orderData) {
       return response()->json([
@@ -318,7 +318,7 @@ class DeliveryController extends Controller
     }
 
     $orderID = $request->order_id;
-    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->first();
+    $orderData = FoodDeliveryPartnerTakenOrder::where('order_id', $orderID)->where('user_id', $userId)->first();
     
     if(!$orderData) {
       return response()->json([
