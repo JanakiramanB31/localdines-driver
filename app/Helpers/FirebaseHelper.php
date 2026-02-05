@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use Exception;
+use App\Models\FoodDeliveryConfig;
 
 class FirebaseHelper
 {
@@ -429,6 +430,7 @@ class FirebaseHelper
       $distanceMiles = '';
 
       if ($orderData) {
+        $pickupTime = isset($orderData['order_pickup_time']) ? date('H:i', strtotime($orderData['order_pickup_time'])) : 'N/A';
         // Build full delivery address
         $deliveryParts = array_filter([
           $orderData['d_address_1'] ?? '',
@@ -439,10 +441,11 @@ class FirebaseHelper
         $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
         $paymentStatus = ($orderData['payment_status'] ?? 0) == 1 ? "Paid" : "Unpaid";
 
-        // Build full pickup address
+        // Get pickup postal code from config
+        $pickupPostalCode = FoodDeliveryConfig::getValue('PICKUP_POSTAL_CODE', '');
         $pickupParts = array_filter([
           $orderData['p_name'] ?? '',
-          $orderData['p_address'] ?? ''
+          $pickupPostalCode
         ]);
         $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
 
@@ -454,6 +457,7 @@ class FirebaseHelper
         );
 
         $notificationBody = "Pickup: {$pickupLocation}\n";
+        $notificationBody .= "Pickup Time: {$pickupTime}\n";
         $notificationBody .= "Drop: {$deliveryLocation}\n";
         $notificationBody .= "Distance: {$distanceMiles}\n";
         $notificationBody .= "Charge: " . ($orderData['delivery_charges'] ?? '');

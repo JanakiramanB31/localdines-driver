@@ -102,6 +102,7 @@ class AdminController extends Controller
     $onlineDriversCount = FoodDeliveryPartner::where('duty_status', true)
       ->where('admin_approval', 'accepted')
       ->where('is_active', 1)
+      ->where('updated_at', '>=', Carbon::now()->subHours(5))
       ->count();
 
     if ($onlineDriversCount === 0) {

@@ -388,9 +388,13 @@ class DeliveryController extends Controller
       return $validation['response'];
     }
 
-    // Fetch only today's orders
+    // Get date range from params, fallback to today
+    $fromDate = $request->input('from') ? Carbon::parse($request->input('from'))->startOfDay() : Carbon::today()->startOfDay();
+    $toDate = $request->input('to') ? Carbon::parse($request->input('to'))->endOfDay() : Carbon::today()->endOfDay();
+
+    // Fetch orders within date range
     $orderHistory = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
-    ->whereDate('created_at', Carbon::today())
+    ->whereBetween('created_at', [$fromDate, $toDate])
     ->select('id', 'order_id', 'order_status', 'user_id', 'd_at')
     ->get();
 
@@ -399,6 +403,8 @@ class DeliveryController extends Controller
         'code' => 404,
         'success' => false,
         'message' => 'No Orders Found',
+        'total_delivered_orders' => 0,
+        'total_rejected_orders' => 0,
       ], 404);
     }
 
@@ -423,10 +429,16 @@ class DeliveryController extends Controller
       return ($statusOrder[$a['order_status']] ?? 99) <=> ($statusOrder[$b['order_status']] ?? 99);
     });
 
+    // Count delivered and rejected orders
+    $totalDeliveredOrders = $orderHistory->where('order_status', 'delivered')->count();
+    $totalRejectedOrders = $orderHistory->where('order_status', 'rejected')->count();
+
     return response()->json([
       'code' => 200,
       'success' => true,
       'message' => 'Order Fetched Successful',
+      'total_delivered_orders' => $totalDeliveredOrders,
+      'total_rejected_orders' => $totalRejectedOrders,
       'data' => $sortedOrderData->values()
     ], 200);
   }
@@ -831,6 +843,7 @@ class DeliveryController extends Controller
     $userData = $validation['user'];
 
     $userData->fcm_token = $request->fcm_token;
+    $userData->updated_at = Carbon::now();;
     $userData->save();
 
     return response()->json([
@@ -1144,6 +1157,7 @@ class DeliveryController extends Controller
         'p_latitude' => $pickupLocationCoOrdinates->lat ?? 'N/A',
         'p_longitude' => $pickupLocationCoOrdinates->lng ?? 'N/A',
         'p_notes' => $order->p_notes,
+        'order_pickup_time' => $order->order_pickup_time ? date('H:i', strtotime($order->order_pickup_time)) : 'N/A',
         'd_latitude' => $latitude,
         'd_longitude' => $longitude,
         'd_address_1' => $order->d_address_1,
