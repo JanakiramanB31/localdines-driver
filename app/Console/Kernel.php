@@ -57,6 +57,6 @@ class Kernel extends ConsoleKernel
     // Set all drivers offline at the configured delivery close time for today
     $schedule->command('drivers:set-offline')
       ->dailyAt($time)
-      ->timezone('UTC');
+      ->timezone('Europe/London');
   }
 }
