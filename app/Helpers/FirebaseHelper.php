@@ -437,7 +437,7 @@ class FirebaseHelper
           $orderData['d_address_2'] ?? '',
           $orderData['d_city'] ?? '',
           $orderData['d_zip'] ?? $orderData['post_code'] ?? ''
-        ]);
+        ], fn($v) => trim($v) !== '');
         $deliveryLocation = implode(', ', $deliveryParts) ?: 'N/A';
         $paymentStatus = ($orderData['payment_status'] ?? 0) == 1 ? "Paid" : "Unpaid";
 
@@ -446,7 +446,7 @@ class FirebaseHelper
         $pickupParts = array_filter([
           $orderData['p_name'] ?? '',
           $pickupPostalCode
-        ]);
+        ], fn($v) => trim($v) !== '');
         $pickupLocation = implode(', ', $pickupParts) ?: 'N/A';
 
         $distanceMiles = self::calculateDistanceMiles(
