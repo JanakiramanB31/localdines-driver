@@ -472,7 +472,7 @@ class FirebaseHelper
             'type' => 'new_order',
             'status' => (string)$paymentStatus,
             'p_addr' => (string)$pickupLocation,
-            'pickup_time' => (string)(isset($orderData['order_pickup_time']) ? date('H:i', strtotime($orderData['order_pickup_time'])) : 'N/A'),
+            'p_time' => (string)(isset($orderData['order_pickup_time']) ? date('H:i', strtotime($orderData['order_pickup_time'])) : 'N/A'),
             'd_addr' => (string)$deliveryLocation,
             'delivery_charge' => (string)($orderData['delivery_charges'] ?? ''),
             'p_lat' => (string)($orderData['p_latitude'] ?? ''),

@@ -1157,7 +1157,7 @@ class DeliveryController extends Controller
         'p_latitude' => $pickupLocationCoOrdinates->lat ?? 'N/A',
         'p_longitude' => $pickupLocationCoOrdinates->lng ?? 'N/A',
         'p_notes' => $order->p_notes,
-        'order_pickup_time' => $order->order_pickup_time ? date('H:i', strtotime($order->order_pickup_time)) : 'N/A',
+        'p_time' => $order->order_pickup_time ? date('H:i', strtotime($order->order_pickup_time)) : 'N/A',
         'd_latitude' => $latitude,
         'd_longitude' => $longitude,
         'd_address_1' => $order->d_address_1,
