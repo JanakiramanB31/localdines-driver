@@ -69,7 +69,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
   $router->get('/order/send-notification/pending', 'DeliveryController@autoSendPendingNotifications');
 
   /* Duplicate an Existing Order - No Auth Required */
-  $router->get('/order/duplicate[/{order_id}]', 'DeliveryController@duplicateOrder');
+  $router->get('/order/create[/{order_id}]', 'DeliveryController@duplicateOrder');
 
   $router->group(['middleware' => 'auth'], function () use ($router) {
 
