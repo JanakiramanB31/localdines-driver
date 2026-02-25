@@ -23,7 +23,7 @@ class DeliveryController extends Controller
    */
   public function __construct()
   {
-    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications']]);
+    $this->middleware('auth', ['except' => ['sendOrderNotification', 'autoSendPendingNotifications', 'duplicateOrder']]);
   }
 
   /**
@@ -1358,6 +1358,95 @@ class DeliveryController extends Controller
         'orders_processed' => $ordersProcessed
       ]
     ], 200);
+  }
+
+  /**
+   * @OA\Post(
+   *     path="/order/duplicate/{order_id}",
+   *     summary="Duplicate an existing order with all its items",
+   *     tags={"Admin"},
+   *     @OA\Parameter(
+   *         name="order_id",
+   *         in="path",
+   *         required=true,
+   *         description="The ID of the order to duplicate",
+   *         @OA\Schema(type="integer", example=204)
+   *     ),
+   *     @OA\Response(
+   *         response=201,
+   *         description="Order duplicated successfully",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=201),
+   *             @OA\Property(property="success", type="boolean", example=true),
+   *             @OA\Property(property="message", type="string", example="Order duplicated successfully"),
+   *             @OA\Property(property="data", type="object",
+   *                 @OA\Property(property="original_order_id", type="integer", example=204),
+   *                 @OA\Property(property="new_order_id", type="integer", example=205),
+   *                 @OA\Property(property="items_duplicated", type="integer", example=3)
+   *             )
+   *         )
+   *     ),
+   *     @OA\Response(
+   *         response=404,
+   *         description="Order not found",
+   *         @OA\JsonContent(
+   *             @OA\Property(property="code", type="integer", example=404),
+   *             @OA\Property(property="success", type="boolean", example=false),
+   *             @OA\Property(property="message", type="string", example="Order not found")
+   *         )
+   *     )
+   * )
+   */
+  public function duplicateOrder($order_id = 321) {
+    $originalOrder = FoodDeliveryOrder::with('order_items')->find($order_id);
+
+    if (!$originalOrder) {
+      return response()->json([
+        'code' => 404,
+        'success' => false,
+        'message' => 'Order not found',
+      ], 404);
+    }
+
+    try {
+      DB::beginTransaction();
+
+      // Duplicate the order
+      $newOrder = $originalOrder->replicate();
+      $newOrder->timestamps = false;
+      $newOrder->status = 'pending';
+      $newOrder->is_paid = 0;
+      $newOrder->created = Carbon::now();
+      $newOrder->save();
+
+      // Duplicate order items
+      foreach ($originalOrder->order_items as $item) {
+        $newItem = $item->replicate();
+        $newItem->timestamps = false;
+        $newItem->order_id = $newOrder->id;
+        $newItem->save();
+      }
+
+      DB::commit();
+
+      return response()->json([
+        'code' => 201,
+        'success' => true,
+        'message' => 'Order duplicated successfully',
+        'data' => [
+          'original_order_id' => (int) $order_id,
+          'new_order_id' => $newOrder->id,
+        ]
+      ], 201);
+
+    } catch (Exception $e) {
+      DB::rollBack();
+      return response()->json([
+        'code' => 500,
+        'success' => false,
+        'message' => 'Failed to duplicate order',
+      ], 500);
+    }
   }
 
 }
