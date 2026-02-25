@@ -1429,6 +1429,11 @@ class DeliveryController extends Controller
 
       DB::commit();
 
+      // Send notification to online partners for the new order
+      $request = app('request');
+      $request->query->set('order_id', $newOrder->id);
+      $this->sendOrderNotification($request);
+
       return response()->json([
         'code' => 201,
         'success' => true,
