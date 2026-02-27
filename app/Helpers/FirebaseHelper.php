@@ -460,7 +460,7 @@ class FirebaseHelper
         $notificationBody .= "Pickup Time: {$pickupTime}\n";
         $notificationBody .= "Drop: {$deliveryLocation}\n";
         $notificationBody .= "Distance: {$distanceMiles}\n";
-        $notificationBody .= "Charge: " . ($orderData['delivery_charges'] ?? '');
+        $notificationBody .= "Delivery Charge: " . ($orderData['delivery_charges'] ?? '');
       }
 
       // FCM HTTP v1 API payload structure

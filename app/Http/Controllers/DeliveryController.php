@@ -392,10 +392,11 @@ class DeliveryController extends Controller
     $fromDate = $request->input('from') ? Carbon::parse($request->input('from'))->startOfDay() : Carbon::today()->startOfDay();
     $toDate = $request->input('to') ? Carbon::parse($request->input('to'))->endOfDay() : Carbon::today()->endOfDay();
 
-    // Fetch orders within date range
+    // Fetch orders within date range, sorted by created_at ascending
     $orderHistory = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
     ->whereBetween('created_at', [$fromDate, $toDate])
-    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at')
+    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at', 'created_at')
+    ->orderBy('created_at', 'desc')
     ->get();
 
     if($orderHistory->isEmpty()) {
@@ -417,16 +418,21 @@ class DeliveryController extends Controller
           'order_status' => $historyOrder->order_status,
           'user_id' => $historyOrder->user_id,
           'd_at' => $historyOrder->d_at,
+          'created_at' => $historyOrder->created_at,
           'order' => $orderData
         ];
       }
       return null;
     })->filter();
 
-    // Reorder: pending (accepted/collected) first, then completed (delivered), then rejected
+    // Sort by status order first, then by created_at desc within the same status
     $statusOrder = ['accepted' => 0, 'collected' => 1, 'delivered' => 2, 'rejected' => 3];
     $sortedOrderData = $updatedOrderData->sort(function($a, $b) use ($statusOrder) {
-      return ($statusOrder[$a['order_status']] ?? 99) <=> ($statusOrder[$b['order_status']] ?? 99);
+      $statusComparison = ($statusOrder[$a['order_status']] ?? 99) <=> ($statusOrder[$b['order_status']] ?? 99);
+      if ($statusComparison !== 0) {
+        return $statusComparison;
+      }
+      return strtotime($b['created_at']) <=> strtotime($a['created_at']);
     });
 
     // Count delivered and rejected orders
@@ -1077,7 +1083,7 @@ class DeliveryController extends Controller
       $assignedPartner = null;
       if ($includeUserDetails) {
         $partnerTakenOrderQuery = FoodDeliveryPartnerTakenOrder::with(['order' => function($query) {
-          $query->select('id', 'is_paid', 'price_delivery', 'order_id', 'first_name', 'surname', 'phone_no');
+          $query->select('id', 'is_paid', 'price', 'price_delivery', 'order_id', 'first_name', 'surname', 'phone_no');
         }])->where('order_id', $orderId);
 
         if($orderStatus !== 'all') {
@@ -1167,7 +1173,7 @@ class DeliveryController extends Controller
         'd_zip' => null,
         'd_notes' => $order->d_notes,
         'post_code' => $order->post_code,
-        'subtotal' => number_format($order->subtotal, 2),
+        'subtotal' => number_format($order->price, 2),
         'total' => number_format($order->total, 2),
         'customer_paid' => number_format($order->customer_paid, 2),
         'order_items' => $orderItems->values()->toArray(),
@@ -1417,6 +1423,10 @@ class DeliveryController extends Controller
       $newOrder->status = 'pending';
       $newOrder->is_paid = 0;
       $newOrder->created = Carbon::now();
+      $newOrder->save();
+
+      // Set order_id as P + primary key id
+      $newOrder->order_id = 'P' . $newOrder->id;
       $newOrder->save();
 
       // Duplicate order items
