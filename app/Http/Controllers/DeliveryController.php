@@ -1454,7 +1454,7 @@ class DeliveryController extends Controller
       $newOrder->save();
 
       // Set order_id as P + primary key id
-      $newOrder->order_id = 'P' . $newOrder->id;
+      $newOrder->order_id = 'W' . $newOrder->id;
       $newOrder->save();
 
       // Duplicate order items
