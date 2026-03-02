@@ -468,7 +468,7 @@ class FirebaseHelper
         'message' => [
           'token' => $fcmToken,
           'data' => [
-            'order_id' => (string)$orderId,
+            'order_id' => (string)($orderData['order_id'] ?? $orderId),
             'type' => 'new_order',
             'status' => (string)$paymentStatus,
             'p_addr' => (string)$pickupLocation,
