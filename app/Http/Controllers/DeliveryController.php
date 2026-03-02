@@ -615,6 +615,19 @@ class DeliveryController extends Controller
       return $validation['response'];
     }
 
+    // Check if partner already has an active order (accepted or collected)
+    $activeOrder = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
+      ->whereIn('order_status', ['accepted', 'collected'])
+      ->first();
+
+    if ($activeOrder) {
+      return response()->json([
+        'code' => 409,
+        'success' => false,
+        'message' => 'You already have an active order (Order #' . $activeOrder->order_id . '). Please complete it before accepting a new one.',
+      ], 409);
+    }
+
     // Check if order exists
     $order = DB::table('food_delivery_orders')->where('id', $orderId)->first();
     if (!$order) {
@@ -998,16 +1011,27 @@ class DeliveryController extends Controller
     $rejectedPartnerIds = FoodDeliveryPartnerTakenOrder::where('order_id', $order_id)
     ->where('order_status', 'rejected')->pluck('user_id')->toArray();
 
+    // Get partners who are currently busy with accepted or collected orders
+    $busyPartnerIds = FoodDeliveryPartnerTakenOrder::whereIn('order_status', ['accepted', 'collected'])
+    ->pluck('user_id')->unique()->toArray();
+
+    // Merge rejected and busy partner IDs
+    $excludedPartnerIds = array_unique(array_merge($rejectedPartnerIds, $busyPartnerIds));
+
     $onlinePartners = FoodDeliveryPartner::where('duty_status', true)
     ->where('admin_approval', 'accepted')->whereNotNull('fcm_token')
-    ->whereNotIn('id', $rejectedPartnerIds)->get();
+    ->whereNotIn('id', $excludedPartnerIds)->get();
 
     if ($onlinePartners->isEmpty()) {
       $totalRejected = count($rejectedPartnerIds);
-      $message = $totalRejected > 0 
-        ? "No available delivery partners found (excluding {$totalRejected} partners who previously rejected this order)"
+      $totalBusy = count($busyPartnerIds);
+      $excludeParts = [];
+      if ($totalRejected > 0) $excludeParts[] = "{$totalRejected} rejected";
+      if ($totalBusy > 0) $excludeParts[] = "{$totalBusy} busy";
+      $message = !empty($excludeParts)
+        ? "No available delivery partners found (excluding " . implode(', ', $excludeParts) . ")"
         : 'No online delivery partners found';
-      
+
       return response()->json([
         'code' => 404,
         'success' => false,
@@ -1039,9 +1063,12 @@ class DeliveryController extends Controller
     }
 
     $totalRejected = count($rejectedPartnerIds);
-    $message = $totalRejected > 0 
-      ? "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed (excluding {$totalRejected} partners who previously rejected this order)"
-      : "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed";
+    $totalBusy = count($busyPartnerIds);
+    $excludeParts = [];
+    if ($totalRejected > 0) $excludeParts[] = "{$totalRejected} rejected";
+    if ($totalBusy > 0) $excludeParts[] = "{$totalBusy} busy";
+    $excludeMsg = !empty($excludeParts) ? " (excluding " . implode(', ', $excludeParts) . ")" : "";
+    $message = "Notification sent to {$partnersNotified} partners, {$failedNotifications} failed" . $excludeMsg;
 
     return response()->json([
       'code' => 200,
@@ -1052,6 +1079,7 @@ class DeliveryController extends Controller
         'partners_notified' => $partnersNotified,
         'failed_notifications' => $failedNotifications,
         'excluded_rejected_partners' => $totalRejected,
+        'excluded_busy_partners' => $totalBusy,
         'order_id' => $order_id,
         'order_details' => $orderData,
         'notification_results' => $notificationResults,
