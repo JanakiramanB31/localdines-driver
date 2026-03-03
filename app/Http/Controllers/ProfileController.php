@@ -510,6 +510,34 @@ class ProfileController extends Controller
 
     $userId = $request->auth->sub;
 
+    // If uses_car or uses_motorcycle is true, a license document is required
+    if ($request->uses_car || $request->uses_motorcycle) {
+      $hasLicense = false;
+      if (is_array($request->docs)) {
+        foreach ($request->docs as $doc) {
+          if (isset($doc['doc_type']) && $doc['doc_type'] === 'license') {
+            $hasLicense = true;
+            break;
+          }
+        }
+      }
+
+      if (!$hasLicense) {
+        // Also check if a license document already exists for this user
+        $existingLicense = FoodDeliveryPartnerDocument::where('partner_id', $userId)
+          ->where('doc_type', 'license')
+          ->first();
+
+        if (!$existingLicense) {
+          return response()->json([
+            'code' => 422,
+            'success' => false,
+            'message' => 'A license document is required when using a car or motorcycle.',
+          ], 422);
+        }
+      }
+    }
+
     // Check if user is pending (only pending users can update profile)
     $validation = UserValidationHelper::checkUserForProfileUpdate($userId);
     if (!$validation['success']) {
