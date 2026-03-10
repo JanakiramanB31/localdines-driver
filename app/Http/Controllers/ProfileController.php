@@ -530,7 +530,7 @@ class ProfileController extends Controller
 
         if (!$existingLicense) {
           return response()->json([
-            'code' => 422,
+            'code' => 400,
             'success' => false,
             'message' => 'A license document is required when using a car or motorcycle.',
           ], 422);

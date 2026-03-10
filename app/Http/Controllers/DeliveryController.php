@@ -193,7 +193,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order Not Found',
+        'message' => "OrderID - {$orderID} not found. Please contact administrator",
       ], 404);
     }
 
@@ -260,7 +260,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order Not Found',
+        'message' => "OrderID - {$orderID} not found. Please contact administrator",
       ], 404);
     }
 
@@ -324,7 +324,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order Not Found',
+        'message' => "OrderID - {$orderID} not found. Please contact administrator",
       ], 404);
     }
 
@@ -543,7 +543,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order not found',
+        'message' => "OrderID -  {$orderId} not found. Please contact administrator",
       ], 404);
     }
 
@@ -634,7 +634,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order not found',
+        'message' => "OrderID - {$orderId} not found. Please contact administrator",
       ], 404);
     }
 
@@ -768,7 +768,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order not found',
+        'message' => "OrderID - {$orderId} not found. Please contact administrator",
       ], 404);
     }
 
@@ -950,7 +950,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order not found'
+        'message' => "OrderID - {$order_id} not found. Please contact administrator"
       ], 404);
     }
 
@@ -1281,7 +1281,7 @@ class DeliveryController extends Controller
         $ordersProcessed[] = [
           'order_id' => $orderId,
           'status' => 'failed',
-          'reason' => 'Order details not found',
+          'reason' => "OrderID - {$orderId} not found. Please contact administrator",
           'partners_notified' => 0
         ];
         continue;
@@ -1438,7 +1438,7 @@ class DeliveryController extends Controller
       return response()->json([
         'code' => 404,
         'success' => false,
-        'message' => 'Order not found',
+        'message' => "OrderID - {$order_id} not found. Please contact administrator",
       ], 404);
     }
 
