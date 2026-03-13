@@ -423,7 +423,7 @@ class DeliveryController extends Controller
         ];
       }
       return null;
-    })->filter();
+    })->filter(); 
 
     // Sort by status order first, then by created_at desc within the same status
     $statusOrder = ['accepted' => 0, 'collected' => 1, 'delivered' => 2, 'rejected' => 3];
