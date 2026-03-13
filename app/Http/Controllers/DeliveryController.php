@@ -348,6 +348,12 @@ class DeliveryController extends Controller
     $orderData->d_at = Carbon::now();
     $orderData->save();
 
+    // Update food_delivery_orders table status and delivered_at
+    DB::table('food_delivery_orders')->where('id', $orderID)->update([
+      'status' => 'delivered',
+      'delivered_at' => Carbon::now(),
+    ]);
+
     // Update Firestore document with delivered status
     FirebaseHelper::updateFirestoreDocument('orders_live', (string)$orderID, [
       'status' => 'delivered',
