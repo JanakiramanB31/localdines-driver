@@ -401,7 +401,7 @@ class DeliveryController extends Controller
     // Fetch orders within date range, sorted by created_at ascending
     $orderHistory = FoodDeliveryPartnerTakenOrder::where('user_id', $userId)
     ->whereBetween('created_at', [$fromDate, $toDate])
-    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at', 'created_at')
+    ->select('id', 'order_id', 'order_status', 'user_id', 'd_at', 'created_at', 'updated_at')
     ->orderBy('created_at', 'desc')
     ->get();
 
@@ -425,6 +425,9 @@ class DeliveryController extends Controller
           'user_id' => $historyOrder->user_id,
           'd_at' => $historyOrder->d_at,
           'created_at' => $historyOrder->created_at,
+          'collected_at' => $historyOrder->order_status === 'collected' ? $historyOrder->updated_at : null,
+          'delivered_at' => $historyOrder->order_status === 'delivered' ? $historyOrder->d_at : null,
+          'rejected_at' => $historyOrder->order_status === 'rejected' ? $historyOrder->updated_at : null,
           'order' => $orderData
         ];
       }
@@ -1184,6 +1187,19 @@ class DeliveryController extends Controller
         }
       }
 
+      $collectedAt = null;
+      $deliveredAt = null;
+      $rejectedAt = null;
+      if ($assignedPartner) {
+        if ($assignedPartner['order_status'] === 'collected') {
+          $collectedAt = $partnerTakenOrder->updated_at;
+        } elseif ($assignedPartner['order_status'] === 'delivered') {
+          $deliveredAt = $partnerTakenOrder->d_at;
+        } elseif ($assignedPartner['order_status'] === 'rejected') {
+          $rejectedAt = $partnerTakenOrder->updated_at;
+        }
+      }
+
       $orderData = [
         'id' => $order->id,
         'order_id' => $order->order_id,
@@ -1192,6 +1208,10 @@ class DeliveryController extends Controller
         'first_name' => $order->first_name,
         'surname' => $order->surname,
         'phone_no' => $order->phone_no,
+        'created_at' => $order->created,
+        'collected_at' => $collectedAt,
+        'delivered_at' => $deliveredAt,
+        'rejected_at' => $rejectedAt,
         'p_name' => $pickupLocation['name'] ?? 'N/A',
         'p_address' => $pickupLocation['address'] ?? 'N/A',
         'p_latitude' => $pickupLocationCoOrdinates->lat ?? 'N/A',
@@ -1457,6 +1477,7 @@ class DeliveryController extends Controller
       $newOrder->status = 'pending';
       $newOrder->is_paid = 0;
       $newOrder->created = Carbon::now();
+      $newOrder->delivery_dt = null;
       $newOrder->save();
 
       // Set order_id as P + primary key id
