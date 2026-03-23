@@ -438,7 +438,7 @@ class DeliveryController extends Controller
       if ($statusComparison !== 0) {
         return $statusComparison;
       }
-      return strtotime($b['created_at']) <=> strtotime($a['created_at']);
+      return strtotime($b['order_date']) <=> strtotime($a['order_date']);
     });
 
     // Count delivered and rejected orders
